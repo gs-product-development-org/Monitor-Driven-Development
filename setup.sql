@@ -57,6 +57,7 @@ create table public.posts (
   topic_id bigint not null,
   post_content text not null,
   created_at timestamp with time zone not null default now(),
+  is_posted boolean not null default false,
   constraint posts_pkey primary key (post_id),
   constraint posts_class_id_fkey foreign KEY (class_id) references classes (class_id) on update CASCADE on delete CASCADE,
   constraint posts_topic_id_fkey foreign KEY (topic_id) references topics (topic_id) on update CASCADE on delete CASCADE,
