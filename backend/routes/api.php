@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\AuthController;
 
 // Supabase DB への接続テスト用 API
 Route::get('/ping', function () {
@@ -22,3 +23,6 @@ Route::get('/ping', function () {
         ], 500);
     }
 });
+
+// http://localhost/api/login に向けてPOSTリクエスト送信する感じになる...！
+Route::post('/login', [AuthController::class, 'login']);
