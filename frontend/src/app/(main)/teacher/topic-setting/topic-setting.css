@@ -1,0 +1,79 @@
+/* 画面全体のレイアウト */
+.topic-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 32px;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* 上部: セレクトボックス2つの配置 */
+.topic-header-selects {
+  display: flex;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.topic-select {
+  flex: 1;
+  height: 48px;
+  padding: 0 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: rgba(255, 255, 255, 0.95);
+  outline: none;
+  cursor: pointer;
+}
+
+/* 中央: メインパーツの配置 */
+.topic-center-box {
+  width: 100%;
+  max-width: 640px;
+  margin: auto;
+}
+
+.topic-template-select {
+  width: 100%;
+  height: 56px;
+  padding: 0 16px;
+  border: 2px solid #2563eb;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: bold;
+  background-color: rgba(255, 255, 255, 0.95);
+  outline: none;
+  cursor: pointer;
+}
+
+.topic-custom-textarea {
+  width: 100%;
+  height: 120px;
+  padding: 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 16px;
+  background-color: rgba(255, 255, 255, 0.95);
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+}
+
+/* 右下: 確定ボタンの配置 */
+.topic-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.topic-confirm-button {
+  min-width: 140px;
+  height: 48px;
+}
