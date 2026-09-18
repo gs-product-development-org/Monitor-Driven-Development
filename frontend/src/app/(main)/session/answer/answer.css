@@ -154,3 +154,117 @@
   min-width: 110px;
   height: 48px;
 }
+
+/* フェーズ2 (アクション選択) 全体コンテナ */
+.action-phase-wrapper {
+  flex: 1;
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+}
+
+/* 中央: 画像・プレビューカード */
+.action-image-card {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 2px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 24px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.action-topic-preview {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.preview-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #64748b;
+}
+
+.preview-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 4px 0 0 0;
+}
+
+.action-illustration-box {
+  max-width: 280px;
+  max-height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.action-illustration {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* 下部: ボタン配置行 */
+.action-buttons-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  gap: 16px;
+}
+
+/* 「宝箱にしまう」「発表する」のトグルグループ */
+.action-toggle-group {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.action-toggle-btn {
+  flex: 1;
+  height: 52px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  background-color: #ffffff;
+  color: #475569;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-toggle-btn:hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+
+/* 選択（アクティブ）時のスタイル */
+.action-toggle-btn.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25);
+}
+
+/* 右端の最終確定ボタン */
+.action-final-confirm-button {
+  min-width: 120px;
+  height: 52px;
+}
+
+.action-final-confirm-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
