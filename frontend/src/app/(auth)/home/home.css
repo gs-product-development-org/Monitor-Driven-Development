@@ -1,0 +1,66 @@
+/* 画面全体のレイアウト定義 */
+.zoo-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-image: url('/images/zoo-bg.png'); /* 👈 背景画像パス */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 左上: ログアウトボタン */
+.top-left-area {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+}
+
+/* 右上（教員のみ）: NGワード登録ボタン */
+.top-right-teacher-area {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
+/* 下部エリア全体のコンテナ */
+.bottom-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  pointer-events: none; /* 下部領域の余白をクリック透過させる */
+}
+
+/* ボタン要素のクリックイベントを有効化 */
+.bottom-left-area,
+.bottom-center-area,
+.bottom-right-area {
+  pointer-events: auto;
+}
+
+/* 画面下の真ん中（お題を決めるボタン）の位置調整 */
+.bottom-center-area {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ボタンごとのデザイン指定 */
+.zoo-btn-main {
+  min-width: 140px;
+}
+
+.zoo-btn-sub {
+  background-color: #64748b;
+}
+
+.zoo-btn-teacher {
+  background-color: #ea580c; /* 教員用ボタンの識別用（オレンジ系） */
+}
