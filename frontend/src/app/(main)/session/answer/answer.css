@@ -1,0 +1,156 @@
+/* 画面全体レイアウト */
+.stock-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 1. 上部: 先生の設定したお題表示 */
+.stock-main-topic {
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 2px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 12px 32px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  max-width: 80%;
+}
+
+.stock-topic-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #64748b;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stock-topic-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 0;
+}
+/* 2. 中央: 書き溜めエリア */
+.stock-center-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  flex: 1;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* LINE風吹き出し縦スクロールエリア */
+.stock-chat-area {
+  width: 100%;
+  height: 100%;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* ← 中央揃えから左寄せ(flex-start)に変更 */
+  gap: 16px;
+}
+
+/* LINE風吹き出しスタイル */
+.chat-bubble {
+  position: relative;
+  background-color: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 14px 24px;
+  max-width: 80%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.chat-bubble:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+}
+
+/* 吹き出し選択状態 */
+.chat-bubble.selected {
+  background-color: #dcfce7;
+  border: 2px solid #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+  transform: scale(1.02);
+}
+
+.chat-text {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #1e293b;
+  text-align: left; /* ← 中央揃えから左寄せ(left)に変更 */
+  word-break: break-word;
+}
+
+.stock-empty-text {
+  color: #64748b;
+  font-size: 14px;
+  margin: auto;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+/* 中央書き溜めエリアの右下確定ボタン位置指定 */
+.stock-confirm-wrapper {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+}
+
+.stock-confirm-button {
+  min-width: 120px;
+  height: 48px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.15);
+}
+
+/* ボタンが無効化（disabled）されている時のスタイル制御 */
+.stock-confirm-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 3. 下部: 入力ボックス + 書き溜めボタン */
+.stock-input-area {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  max-width: 680px;
+}
+
+.stock-input-box {
+  flex: 1;
+  height: 48px;
+  padding: 0 16px;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  font-size: 16px;
+  background-color: rgba(255, 255, 255, 0.95);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.stock-add-button {
+  min-width: 110px;
+  height: 48px;
+}
