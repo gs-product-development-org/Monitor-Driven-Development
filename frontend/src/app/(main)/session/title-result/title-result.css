@@ -1,0 +1,218 @@
+/* 画面全体レイアウト */
+.result-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* 画面一番上: お題表示 */
+.result-topic-header {
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 2px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 10px 32px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  max-width: 80%;
+}
+
+.result-topic-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #64748b;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.result-topic-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* メインコンテンツエリア (左右2分割) */
+.result-main-content {
+  flex: 1;
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  gap: 24px;
+  margin: 16px 0;
+  align-items: stretch;
+}
+
+/* ================= 画面左半分 (称号) ================= */
+.result-left-section {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 2px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.title-header-box {
+  text-align: center;
+}
+
+.title-sub-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #3b82f6;
+  background-color: #dbeafe;
+  padding: 2px 12px;
+  border-radius: 12px;
+}
+
+.title-main-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 8px 0 0 0;
+}
+
+/* 画像表示枠 */
+.title-image-wrapper {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.title-character-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 2;
+}
+
+.title-image-fallback {
+  position: absolute;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fef08a 0%, #fde047 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+
+.fallback-emoji {
+  font-size: 64px;
+}
+
+.title-description-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.description-text {
+  margin: 0;
+  font-size: 14px;
+  color: #334155;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* ================= 画面右半分 (円グラフ) ================= */
+.result-right-section {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 2px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.chart-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+  text-align: center;
+}
+
+.chart-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chart-legend-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #475569;
+}
+
+.legend-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-count {
+  color: #0f172a;
+}
+
+.no-reactions-box {
+  color: #94a3b8;
+  font-size: 14px;
+  margin: auto;
+}
+
+/* 画面右下のボタン枠 */
+.result-footer-action {
+  width: 100%;
+  max-width: 960px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.go-answers-button {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 15px;
+  font-weight: bold;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
