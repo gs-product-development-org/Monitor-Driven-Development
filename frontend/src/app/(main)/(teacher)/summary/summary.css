@@ -1,0 +1,87 @@
+/* 画面全体レイアウト */
+.rate-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+/* 画面左上: 「◀ もどる」ボタン */
+.rate-back-button {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.rate-back-button:hover {
+  opacity: 0.7;
+}
+
+/* 左向きの黒い三角 */
+.back-arrow {
+  color: #000000;
+  font-size: 16px;
+  display: inline-block;
+  transform: rotate(-90deg);
+}
+
+/* 黒文字の「もどる」 */
+.back-text {
+  color: #000000;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* 画面上部: タイトル・年度エリア */
+.rate-header {
+  text-align: center;
+  margin-top: 12px;
+}
+
+.rate-title {
+  color: #000000;
+  font-size: 28px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+}
+
+.rate-sub-title {
+  color: #000000;
+  font-size: 14px;
+  font-weight: bold;
+  display: block;
+}
+
+/* 画面全体に大きく広がるグラフエリア */
+.rate-chart-wrapper {
+  flex: 1;
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 16px;
+  padding: 20px 24px 10px 10px;
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 3px solid #cbd5e1;
+  border-radius: 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+}

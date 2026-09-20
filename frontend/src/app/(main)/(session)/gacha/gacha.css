@@ -1,0 +1,172 @@
+/* 画面全体レイアウト */
+.gacha-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 24px;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 画面右上: ガチャ回数ゲージ */
+.gacha-gauge-container {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 20;
+}
+
+.gauge-frame {
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 3px solid #f59e0b;
+  border-radius: 20px;
+  padding: 10px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.gauge-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #78350f;
+}
+
+.gauge-eggs-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.gauge-egg-icon {
+  width: 36px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.gauge-egg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* アクティブ（色付き卵） */
+.gauge-egg-icon.active {
+  transform: scale(1.05);
+  filter: drop-shadow(0 2px 4px rgba(245, 158, 11, 0.4));
+}
+
+/* インアクティブ（グレーの薄い卵） */
+.gauge-egg-icon.inactive {
+  opacity: 0.35;
+  filter: grayscale(100%);
+}
+
+/* 画面中央ステージ */
+.gacha-stage-wrapper {
+  width: 100%;
+  max-width: 520px;
+  height: 480px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gacha-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.gacha-gif {
+  max-width: 320px;
+  max-height: 320px;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.gacha-start-button {
+  height: 56px;
+  padding: 0 40px;
+  font-size: 20px;
+  font-weight: bold;
+  background-color: #f59e0b;
+  border-color: #d97706;
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+}
+
+.gacha-status-text {
+  font-size: 22px;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  margin: 0;
+}
+
+/* 結果カード表示 */
+.gacha-result-card {
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 4px solid #f59e0b;
+  border-radius: 28px;
+  padding: 28px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.result-badge {
+  background-color: #ef4444;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 4px 16px;
+  border-radius: 20px;
+}
+
+.result-animal-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 8px 0 16px 0;
+}
+
+.result-animal-image-box {
+  width: 180px;
+  height: 180px;
+  margin-bottom: 20px;
+}
+
+.result-animal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.gacha-next-button {
+  height: 48px;
+  padding: 0 32px;
+  font-size: 16px;
+  font-weight: bold;
+}

@@ -1,28 +1,30 @@
-// src/stores/useUserStore.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type UserRole = 'teacher' | 'student' | null;
+// 1. ユーザー情報の型定義
+export type UserInfo = {
+  role: 'teacher' | 'student';
+  class_id: string;
+  student_id: string;
+} | null;
 
-type UserState = {
-  role: UserRole;
-  class_id: string | null;
-  student_id: string | null;
-  setUser: (user: { role: UserRole; class_id: string; student_id: string }) => void;
-  logout: () => void;
+// 2. Zustand ストア全体の型定義
+export type UserState = {
+  user: UserInfo;                                // 👈 追加されているか確認
+  setUser: (user: NonNullable<UserInfo>) => void;
+  clearUser: () => void;                         // 👈 追加されているか確認
 };
 
+// 3. ストアの作成
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      role: null,
-      class_id: null,
-      student_id: null,
-      setUser: (user) => set(user),
-      logout: () => set({ role: null, class_id: null, student_id: null }),
+      user: null,
+      setUser: (userData) => set({ user: userData }),
+      clearUser: () => set({ user: null }),
     }),
     {
-      name: 'user-session-storage', // ブラウザの LocalStorage に保存されるキー名
+      name: 'user-storage', // localStorageのキー名
     }
   )
 );

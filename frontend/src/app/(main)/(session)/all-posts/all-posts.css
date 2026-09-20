@@ -1,0 +1,135 @@
+/* 画面全体レイアウト */
+.answers-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 24px 0 0 0;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 画面上部: お題表示 */
+.answers-topic-header {
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 2px solid #cbd5e1;
+  border-radius: 16px;
+  padding: 10px 32px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  max-width: 80%;
+  margin: 0 auto 16px auto;
+  z-index: 10;
+}
+
+.answers-topic-label {
+  font-size: 12px;
+  font-weight: bold;
+  color: #64748b;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.answers-topic-title {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* 縦スクロール領域 */
+.answers-scroll-area {
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden; /* 横スクロールは防止 */
+  padding: 20px 0 80px 0;
+  box-sizing: border-box;
+}
+
+/* 横に4.5個並び、左右交互に見切れる卵のグリッド */
+.answers-egg-grid {
+  display: grid;
+  /* 画面幅の中に約4.5個（1つあたり約22vw）並ぶ計算 */
+  grid-template-columns: repeat(auto-fill, minmax(22vw, 1fr));
+  gap: 20px 16px;
+  width: 110vw; /* 画面からはみ出させて見切れを作る */
+  margin-left: -5vw; /* 左側も見切れさせるため外側に出す */
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+/* 卵型カードコンテナ */
+.answers-egg-card {
+  aspect-ratio: 4 / 5; /* 卵型の比率 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+/* 奇数行を右にシフトさせて互い違い（ジグザグ）にする */
+.answers-egg-card.shift-row {
+  transform: translateX(11vw);
+}
+
+/* 卵のデザイン */
+.egg-card-inner {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f1f5f9 100%);
+  border: 3px solid #60a5fa;
+  border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; /* 卵の曲線 */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.egg-card-inner:hover {
+  transform: scale(1.03);
+  border-color: #2563eb;
+}
+
+.egg-text {
+  font-size: 14px;
+  font-weight: bold;
+  color: #1e293b;
+  line-height: 1.4;
+  margin: 0;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 4; /* テキストが長すぎる場合の省略表示 */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 画面右下: 先生用の「ガチャへ進む」固定ボタン */
+.answers-teacher-action {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
+}
+
+.go-gacha-button {
+  height: 52px;
+  padding: 0 28px;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #f59e0b; /* ガチャに合わせた目立つカラー */
+  border-color: #d97706;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+.go-gacha-button:hover {
+  background-color: #d97706;
+}

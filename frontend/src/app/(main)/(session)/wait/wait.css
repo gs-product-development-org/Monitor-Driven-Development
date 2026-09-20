@@ -1,0 +1,70 @@
+/* 画面全体レイアウト */
+.wait-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  padding: 32px 24px;
+  box-sizing: border-box;
+  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* 画面中央: 画像コンテナ */
+.wait-image-container {
+  width: 100%;
+  max-width: 320px;
+  max-height: 320px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 28px;
+  /* 待機中感を出すための優しく上下に浮遊するアニメーション */
+  animation: floatAnimation 3s ease-in-out infinite;
+}
+
+.wait-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 浮遊アニメーション */
+@keyframes floatAnimation {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* 画像の下: 黒文字文章コンテナ */
+.wait-message-container {
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 2px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 16px 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-width: 90%;
+  text-align: center;
+}
+
+/* 黒文字文章 */
+.wait-message-text {
+  color: #000000;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 1.5;
+  margin: 0;
+  word-break: break-word;
+}
