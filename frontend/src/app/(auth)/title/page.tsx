@@ -13,7 +13,7 @@ type TitleData = {
 // ダミーデータ（実際のアプリではユーザー情報や獲得称号に応じて変更）
 const MOCK_CURRENT_TITLE: TitleData = {
   name: 'アイデア探検家',
-  image: '/images/titles/title-explorer.png',
+  image: '/images/animals/title-example.png',
   description: 'たくさんの思いつきを宝箱に集めたあかし！',
 };
 
@@ -29,7 +29,12 @@ export default function TitleDetailPage() {
   return (
     <div className="title-detail-container">
       {/* 画面左上: 「◀ もどる」ボタン */}
-      <button className="back-button" onClick={handleBack} aria-label="もどる">
+      <button
+        type="button"
+        onClick={() => router.push('/home')}
+        className="title-back-button"
+        aria-label="もどる"
+      >
         <span className="back-arrow">▲</span>
         <span className="back-text">もどる</span>
       </button>

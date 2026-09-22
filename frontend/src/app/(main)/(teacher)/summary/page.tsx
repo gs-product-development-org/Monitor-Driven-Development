@@ -41,24 +41,24 @@ export default function RaisingHandsRatePage() {
   const router = useRouter();
 
   // クラス情報・年度情報（実際はContextやAPIから取得）
-  const [classInfo] = useState({ gradeClass: '3年1組', schoolYear: '2026年度' });
-
-  // ホームに戻る処理
-  const handleBack = () => {
-    router.back();
-  };
+  const [classInfo] = useState({ gradeClass: '4年1組', schoolYear: '2026年度' });
 
   return (
     <div className="rate-container">
       {/* 画面左上: 「◀ もどる」ボタン */}
-      <button className="rate-back-button" onClick={handleBack} aria-label="もどる">
+      <button
+        type="button"
+        onClick={() => router.push('/home')}
+        className="rate-back-button"
+        aria-label="もどる"
+      >
         <span className="back-arrow">▲</span>
         <span className="back-text">もどる</span>
       </button>
 
       {/* 画面上部: タイトルと年度表記 */}
       <div className="rate-header">
-        <h1 className="rate-title">{classInfo.gradeClass}の挙手率の変化</h1>
+        <h1 className="rate-title">{classInfo.gradeClass}の公開率の変化</h1>
         <span className="rate-sub-title">{classInfo.schoolYear}</span>
       </div>
 
@@ -96,7 +96,7 @@ export default function RaisingHandsRatePage() {
             <Tooltip
             formatter={(value: ValueType | undefined) => [
                 `${value ?? 0} 人`,
-                '挙手人数',
+                '公開人数',
             ]}
             contentStyle={{
                 backgroundColor: 'rgba(255, 255, 255, 0.95)',

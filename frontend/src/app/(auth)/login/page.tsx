@@ -21,7 +21,7 @@ export default function LoginPage() {
           type="text"
           value={classId}
           onChange={(e) => setClassId(e.target.value)}
-          placeholder="クラスID"
+          placeholder="クラス番号"
           className="login-input"
           required
         />
@@ -31,7 +31,7 @@ export default function LoginPage() {
           type="text"
           value={studentId}
           onChange={(e) => setStudentId(e.target.value)}
-          placeholder="出席番号 / ID"
+          placeholder="出席番号"
           className="login-input"
           required
         />
@@ -47,8 +47,8 @@ export default function LoginPage() {
         />
 
         {/* 4. スタートボタン（共通コンポーネント） */}
-        <Button type="submit">
-          スタート
+        <Button type="submit" className="start-button">
+          START
         </Button>
       </form>
     </div>
