@@ -105,3 +105,22 @@
   margin: 0;
   white-space: nowrap; /* 1行で表示 */
 }
+
+/* 画面のど真ん中に配置するためのラッパー */
+.title-empty-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+/* テキストのスタイリング */
+.title-error-message {
+  color: #666;
+  font-size: 50px;
+  font-weight: bold;
+  text-align: center;
+  word-break: break-all;
+  margin: 0;
+}

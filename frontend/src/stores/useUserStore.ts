@@ -2,18 +2,19 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // 1. ユーザー情報の型定義
-export type UserInfo = {
-  role: 'teacher' | 'student';
+export interface User {
+  user_id?: number | string; // ★ ここを追加（UUIDや数値ID）
   class_id: string;
-  student_id: string;
-} | null;
+  user_number: number;
+  // student_id: string;
+  role: 'teacher' | 'student';
+}
 
-// 2. Zustand ストア全体の型定義
-export type UserState = {
-  user: UserInfo;                                // 👈 追加されているか確認
-  setUser: (user: NonNullable<UserInfo>) => void;
-  clearUser: () => void;                         // 👈 追加されているか確認
-};
+export interface UserState {
+  user: User | null;
+  setUser: (user: User) => void;
+  clearUser: () => void;
+}
 
 // 3. ストアの作成
 export const useUserStore = create<UserState>()(
