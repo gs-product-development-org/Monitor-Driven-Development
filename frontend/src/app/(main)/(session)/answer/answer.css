@@ -235,6 +235,8 @@
   justify-content: center;
   padding-top: 0px;
   padding-bottom: 6px;
+  color: #ffffff;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .stock-confirm-button:hover {
@@ -347,6 +349,7 @@
   padding-top: 10px;
   padding-bottom: 15px;
   transition: background-color 0.2s ease, transform 0.2s ease;
+  color: #ffffff;
 }
 
 .action-toggle-btn-primary:hover {

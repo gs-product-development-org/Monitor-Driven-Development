@@ -151,7 +151,7 @@ function WaitContent({
             className="transition-btn"
             onClick={() => setIsModalOpen(true)}
           >
-            {mode === 'reaction_completed' ? '称号画面へ' : 'リアクション画面へ'}
+            {mode === 'reaction_completed' ? '称号・一覧画面へ' : 'リアクション画面へ'}
           </button>
         </div>
       )}

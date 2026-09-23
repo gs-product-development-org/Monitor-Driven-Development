@@ -3,12 +3,11 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  padding: 32px 24px 24px;
+  padding: 32px 24px;
   box-sizing: border-box;
   background-color: #FF648D;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   overflow: hidden;
 }
@@ -16,12 +15,12 @@
 /* メインコンテンツエリア (左右2分割) */
 .result-main-content {
   flex: 1;
-  width: 100%;
-  max-width: 960px;
+  width: 1100px;
+  height: 100%;
+  max-height: 520px;
   display: flex;
   gap: 32px;
-  margin-bottom: 16px;
-  align-items: center;
+  align-items: stretch;
 }
 
 /* ================= 画面左半分 (枠なし称号エリア) ================= */
@@ -32,20 +31,31 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 60px;
 }
 
 .title-header-box {
   text-align: center;
 }
 
+/* 見出し全体のベース設定 */
 .title-main-text {
-  font-size: 26px;
   font-weight: bold;
-  color: #ffffff;
+  color: #000000;
   margin: 0;
   line-height: 1.3;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 1行目: あなたの称号は（少し小さめ） */
+.title-sub-text {
+  font-size: 28px; /* 好みに合わせて 16px〜20px 等で調整してください */
+  font-weight: 500;
+}
+
+/* 2行目: 【称号名】タイプ！（大きめ・強調） */
+.title-highlight-text {
+  font-size: 35px; /* 好みに合わせて 24px〜32px 等で調整してください */
+  font-weight: bold;
 }
 
 /* 画像枠コンテナ */
@@ -64,7 +74,7 @@
   object-fit: contain;
 }
 
-/* ★ フォールバック画像コンテナ & 画像スタイル */
+/* フォールバック画像コンテナ & 画像スタイル */
 .title-image-fallback {
   width: 100%;
   height: 100%;
@@ -78,6 +88,7 @@
   height: 100%;
   object-fit: contain;
 }
+
 /* 枠のないシンプルな説明文コンテナ */
 .title-description-box {
   width: 100%;
@@ -86,13 +97,13 @@
   text-align: center;
 }
 
+/* 左エリア説明文文字色: 黒 */
 .description-text {
   margin: 0;
-  font-size: 16px;
-  color: #ffffff;
+  font-size: 28px;
+  color: #000000;
   line-height: 1.6;
-  font-weight: 600;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-weight: 400;
 }
 
 /* 非公開プレースホルダーエリア */
@@ -104,11 +115,20 @@
   width: 100%;
 }
 
-/* ================= 画面右半分 (円グラフ) ================= */
+/* ================= 画面右半分 (透明コンテナ) ================= */
 .result-right-section {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* 右エリア内の「白い枠組み（カード）」 */
+.chart-card {
+  flex: 1;
   background-color: rgba(255, 255, 255, 0.95);
-  border: 4px solid #000000;
+  border: 2px solid #5e5e5e;
   border-radius: 20px;
   padding: 24px;
   display: flex;
@@ -120,7 +140,7 @@
 }
 
 .chart-title {
-  font-size: 20px;
+  font-size: 25px;
   font-weight: bold;
   color: #1e293b;
   margin: 0 0 12px 0;
@@ -135,13 +155,13 @@
   justify-content: center;
 }
 
-/* 凡例リストの復活・調整 */
+/* 凡例リスト */
 .chart-legend-list {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 16px;
-  margin-top: 12px;
+  margin-top: 8px;
   width: 100%;
 }
 
@@ -149,7 +169,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: bold;
   color: #334155;
 }
@@ -171,18 +191,33 @@
   margin: auto;
 }
 
-/* 画面右下のボタン枠 */
-.result-footer-action {
+/* 白枠の外・右エリア下部に配置するボタンエリア */
+.right-section-footer {
   width: 100%;
-  max-width: 960px;
   display: flex;
   justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .go-answers-button {
-  height: 52px;
-  padding: 0 28px;
-  font-size: 16px;
-  font-weight: bold;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  width: 300px;
+  height: 80px;
+  border: 7px solid #000000;
+  border-radius: 12px;
+  font-size: 35px;
+  background-color: #FF3333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0px;
+  padding-bottom: 6px;
+  color: #ffffff;
+  font-weight: 550;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.go-answers-button:hover {
+  background-color: #ff7171;
+  border: 7px solid #525252;
+  transform: translateY(-2px) scale(1.02);
 }

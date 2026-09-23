@@ -34,12 +34,12 @@ export default function ResultPage() {
 
   const [isPrivate] = useState<boolean>(false);
 
-  // ★ 称号データ（フォールバック用画像パス fallbackImage も持たせる構造）
+  // ★ 称号データ
   const [titleData] = useState<TitleData>({
     id: 'humor-star',
     name: 'ユーモアスター',
     description:
-      '「おもしろい」リアクションをたくさん獲得しました！みんなの朝を笑顔にする最高の発想力を持っています。',
+      'みんなの朝を笑顔にする最高の発想力を持っています。',
     characterImage: '/images/animals/title-example.png',
   });
 
@@ -48,7 +48,7 @@ export default function ResultPage() {
   const activeChartData = reactions.filter((item) => item.count > 0);
 
   const handleGoToAllAnswers = () => {
-    router.push('/student/answers-list');
+    router.push('/all-posts');
   };
 
   return (
@@ -62,7 +62,9 @@ export default function ResultPage() {
             <>
               <div className="title-header-box">
                 <h2 className="title-main-text">
-                  あなたの称号は<br />【{titleData.name}】タイプ！
+                  <span className="title-sub-text">あなたの称号は</span>
+                  <br />
+                  <span className="title-highlight-text">【{titleData.name}】タイプ！</span>
                 </h2>
               </div>
 
@@ -72,13 +74,11 @@ export default function ResultPage() {
                   alt={titleData.name}
                   className="title-character-image"
                   onError={(e) => {
-                    // メイン画像が読み込めない場合、フォールバック要素を表示
                     (e.target as HTMLElement).style.display = 'none';
                     const fallback = (e.target as HTMLElement).nextElementSibling as HTMLElement;
                     if (fallback) fallback.style.display = 'flex';
                   }}
                 />
-                {/* ★ 絵文字から画像表示へ変更 */}
                 <div className="title-image-fallback" style={{ display: 'none' }}>
                   <img
                     src="/images/animals/title-example.png"
@@ -114,57 +114,60 @@ export default function ResultPage() {
           )}
         </div>
 
-        {/* 右半分: リアクション内訳 */}
+        {/* 右エリア: 白い枠（グラフ） ＋ 下部ボタン */}
         <div className="result-right-section">
-          <h3 className="chart-title">リアクションの内訳</h3>
+          {/* 白い枠組み（カードエリア） */}
+          <div className="chart-card">
+            <h3 className="chart-title">リアクションの内訳</h3>
 
-          {activeChartData.length > 0 ? (
-            <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie
-                    data={activeChartData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={45}
-                    outerRadius={75}
-                    paddingAngle={4}
-                    dataKey="count"
-                    nameKey="name"
-                    label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {activeChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={() => ['', '']} labelFormatter={(name) => `${name}`} />
-                </PieChart>
-              </ResponsiveContainer>
+            {activeChartData.length > 0 ? (
+              <div className="chart-wrapper">
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={activeChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={0}
+                      outerRadius={100}
+                      paddingAngle={0}
+                      dataKey="count"
+                      nameKey="name"
+                      label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {activeChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={() => ['', '']} labelFormatter={(name) => `${name}`} />
+                  </PieChart>
+                </ResponsiveContainer>
 
-              {/* 凡例 */}
-              <div className="chart-legend-list">
-                {activeChartData.map((item) => (
-                  <div key={item.type} className="legend-item">
-                    <span
-                      className="legend-color-dot"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="legend-label">{item.name}</span>
-                  </div>
-                ))}
+                {/* 凡例 */}
+                <div className="chart-legend-list">
+                  {activeChartData.map((item) => (
+                    <div key={item.type} className="legend-item">
+                      <span
+                        className="legend-color-dot"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="legend-label">{item.name}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="no-reactions-box">まだリアクションがありません</div>
-          )}
-        </div>
-      </div>
+            ) : (
+              <div className="no-reactions-box">まだリアクションがありません</div>
+            )}
+          </div>
 
-      {/* 画面の一番右下: 移動ボタン */}
-      <div className="result-footer-action">
-        <Button onClick={handleGoToAllAnswers} className="go-answers-button">
-          みんなの回答一覧へ ➔
-        </Button>
+          {/* 白い枠の外（右エリアの下部）に配置するボタン */}
+          <div className="right-section-footer">
+            <Button onClick={handleGoToAllAnswers} className="go-answers-button">
+              みんなの回答へ
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
