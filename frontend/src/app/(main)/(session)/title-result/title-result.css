@@ -3,161 +3,147 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  padding: 24px;
+  padding: 32px 24px;
   box-sizing: border-box;
-  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #FF648D;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   overflow: hidden;
-}
-
-/* 画面一番上: お題表示 */
-.result-topic-header {
-  text-align: center;
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
-  border-radius: 16px;
-  padding: 10px 32px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  max-width: 80%;
-}
-
-.result-topic-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: #64748b;
-  display: block;
-  margin-bottom: 2px;
-}
-
-.result-topic-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #1e293b;
-  margin: 0;
 }
 
 /* メインコンテンツエリア (左右2分割) */
 .result-main-content {
   flex: 1;
-  width: 100%;
-  max-width: 960px;
+  width: 1100px;
+  height: 100%;
+  max-height: 520px;
   display: flex;
-  gap: 24px;
-  margin: 16px 0;
+  gap: 32px;
   align-items: stretch;
 }
 
-/* ================= 画面左半分 (称号) ================= */
-.result-left-section {
+/* ================= 画面左半分 (枠なし称号エリア) ================= */
+.result-left-section-clean {
   flex: 1;
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
-  border-radius: 20px;
-  padding: 20px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  gap: 60px;
 }
 
 .title-header-box {
   text-align: center;
 }
 
-.title-sub-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: #3b82f6;
-  background-color: #dbeafe;
-  padding: 2px 12px;
-  border-radius: 12px;
-}
-
+/* 見出し全体のベース設定 */
 .title-main-text {
-  font-size: 20px;
   font-weight: bold;
-  color: #1e293b;
-  margin: 8px 0 0 0;
+  color: #000000;
+  margin: 0;
+  line-height: 1.3;
 }
 
-/* 画像表示枠 */
+/* 1行目: あなたの称号は（少し小さめ） */
+.title-sub-text {
+  font-size: 28px; /* 好みに合わせて 16px〜20px 等で調整してください */
+  font-weight: 500;
+}
+
+/* 2行目: 【称号名】タイプ！（大きめ・強調） */
+.title-highlight-text {
+  font-size: 35px; /* 好みに合わせて 24px〜32px 等で調整してください */
+  font-weight: bold;
+}
+
+/* 画像枠コンテナ */
 .title-image-wrapper {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 200px;
+  height: 200px;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 8px 0;
 }
 
 .title-character-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  z-index: 2;
 }
 
+/* フォールバック画像コンテナ & 画像スタイル */
 .title-image-fallback {
-  position: absolute;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fef08a 0%, #fde047 100%);
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1;
 }
 
-.fallback-emoji {
-  font-size: 64px;
-}
-
-.title-description-box {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
+.fallback-image {
   width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 枠のないシンプルな説明文コンテナ */
+.title-description-box {
+  width: 100%;
+  padding: 0 8px;
   box-sizing: border-box;
   text-align: center;
 }
 
+/* 左エリア説明文文字色: 黒 */
 .description-text {
   margin: 0;
-  font-size: 14px;
-  color: #334155;
-  line-height: 1.5;
-  font-weight: 500;
+  font-size: 28px;
+  color: #000000;
+  line-height: 1.6;
+  font-weight: 400;
 }
 
-/* ================= 画面右半分 (円グラフ) ================= */
+/* 非公開プレースホルダーエリア */
+.private-title-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+/* ================= 画面右半分 (透明コンテナ) ================= */
 .result-right-section {
   flex: 1;
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+/* 右エリア内の「白い枠組み（カード）」 */
+.chart-card {
+  flex: 1;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 2px solid #5e5e5e;
   border-radius: 20px;
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
 }
 
 .chart-title {
-  font-size: 18px;
+  font-size: 25px;
   font-weight: bold;
   color: #1e293b;
-  margin: 0 0 8px 0;
+  margin: 0 0 12px 0;
   text-align: center;
 }
 
@@ -166,53 +152,72 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
+/* 凡例リスト */
 .chart-legend-list {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 12px;
+  gap: 16px;
   margin-top: 8px;
+  width: 100%;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 18px;
   font-weight: bold;
-  color: #475569;
+  color: #334155;
 }
 
 .legend-color-dot {
-  width: 10px;
-  height: 10px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.legend-count {
-  color: #0f172a;
+.legend-label {
+  line-height: 1;
 }
 
 .no-reactions-box {
   color: #94a3b8;
-  font-size: 14px;
+  font-size: 15px;
   margin: auto;
 }
 
-/* 画面右下のボタン枠 */
-.result-footer-action {
+/* 白枠の外・右エリア下部に配置するボタンエリア */
+.right-section-footer {
   width: 100%;
-  max-width: 960px;
   display: flex;
   justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .go-answers-button {
-  height: 48px;
-  padding: 0 24px;
-  font-size: 15px;
-  font-weight: bold;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  width: 300px;
+  height: 80px;
+  border: 7px solid #000000;
+  border-radius: 12px;
+  font-size: 35px;
+  background-color: #FF3333;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0px;
+  padding-bottom: 6px;
+  color: #ffffff;
+  font-weight: 550;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.go-answers-button:hover {
+  background-color: #ff7171;
+  border: 7px solid #525252;
+  transform: translateY(-2px) scale(1.02);
 }

@@ -12,6 +12,11 @@ const INITIAL_NG_WORDS = [
   'しね',
   'きもい',
   'うざい',
+  'ばか',
+  'あほ',
+  'しね',
+  'きもい',
+  'うざい',
 ];
 
 export default function NgWordsPage() {
@@ -51,7 +56,7 @@ export default function NgWordsPage() {
     setNgWords(ngWords.filter((word) => word !== targetWord));
   };
 
-  // 表示用リストのフィルタリング（検索語が入っていれば絞り込み、無ければ全件）
+  // 表示用リストのフィルタリング
   const displayedWords = activeSearchTerm
     ? ngWords.filter((word) =>
         word.toLowerCase().includes(activeSearchTerm.toLowerCase())
@@ -60,15 +65,16 @@ export default function NgWordsPage() {
 
   return (
     <div className="ng-words-container">
-      {/* 画面右上: 戻るボタン */}
-      <div className="ng-words-header">
-        <Button
-          onClick={() => router.push('/zoo')}
-          className="ng-back-button"
-        >
-          戻る
-        </Button>
-      </div>
+      {/* 画面左上: 「▲ もどる」ボタン */}
+      <button
+        type="button"
+        onClick={() => router.push('/home')}
+        className="ng-back-button"
+        aria-label="もどる"
+      >
+        <span className="back-arrow">▲</span>
+        <span className="back-text">もどる</span>
+      </button>
 
       <div className="ng-words-content">
         {/* 1. 一番上: ワード入力ボックス + 右に追加ボタン */}
@@ -92,9 +98,9 @@ export default function NgWordsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="登録済みワードを検索..."
-            className="ng-input"
+            className="ng-input-search"
           />
-          <Button onClick={handleSearch} className="ng-action-button">
+          <Button onClick={handleSearch} className="ng-action-button-search">
             検索
           </Button>
         </div>
@@ -109,6 +115,7 @@ export default function NgWordsPage() {
             )}
             {activeSearchTerm && (
               <button
+                type="button"
                 onClick={() => {
                   setSearchQuery('');
                   setActiveSearchTerm('');
@@ -126,6 +133,7 @@ export default function NgWordsPage() {
                 <li key={index} className="ng-item">
                   <span className="ng-word-text">{word}</span>
                   <button
+                    type="button"
                     onClick={() => handleDeleteWord(word)}
                     className="ng-delete-button"
                   >

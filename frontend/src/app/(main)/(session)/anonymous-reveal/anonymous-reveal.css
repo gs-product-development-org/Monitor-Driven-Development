@@ -1,197 +1,205 @@
-/* 画面全体レイアウト */
-.reaction-container {
-  position: relative;
+/* 全体レイアウト (背景ピンク) */
+.reveal-container {
   width: 100vw;
   height: 100vh;
-  padding: 24px;
-  box-sizing: border-box;
-  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #FF648D; /* ピンク背景 */
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
-/* 1. 画面上部: お題表示 */
-.reaction-topic-header {
+/* 上部お題 */
+.stock-main-topic {
   text-align: center;
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 7px solid #000000;
   border-radius: 16px;
-  padding: 12px 32px;
+  padding: 10px 32px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  max-width: 80%;
+  width: 80%;
 }
 
-.reaction-topic-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: #64748b;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.reaction-topic-title {
-  font-size: 22px;
+.stock-topic-title {
+  font-size: 32px;
   font-weight: bold;
   color: #1e293b;
   margin: 0;
-}
-
-/* 2. 画面中央: 卵ステージ */
-.reaction-egg-stage {
-  flex: 1;
-  width: 100%;
-  max-width: 480px;
-  display: flex;
-  justify-content: center;
+  display: inline-flex;
   align-items: center;
-  position: relative;
-  margin: 16px 0;
-}
-
-.egg-card-wrapper {
-  width: 100%;
-  height: 100%;
-  max-height: 360px;
-  display: flex;
   justify-content: center;
-  align-items: center;
-}
-
-/* 卵型のカード（楕円・曲線を活かしたデザイン） */
-.egg-card {
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at 50% 30%, #ffffff 0%, #f1f5f9 100%);
-  border: 4px solid #3b82f6;
-  border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; /* 卵のシルエット風角丸 */
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 32px 48px;
-  box-sizing: border-box;
-  text-align: center;
-  transition: transform 0.35s ease-in-out, opacity 0.35s ease-in-out;
-}
-
-/* 左へスライドアウトするアニメーション */
-.egg-card.slide-left {
-  transform: translateX(-120%) rotate(-10deg);
-  opacity: 0;
-}
-
-.egg-author {
-  font-size: 14px;
-  font-weight: bold;
-  color: #2563eb;
-  background-color: #dbeafe;
-  padding: 4px 16px;
-  border-radius: 20px;
-  margin-bottom: 16px;
-}
-
-.egg-content-text {
-  font-size: 20px;
-  font-weight: bold;
-  color: #1e293b;
-  line-height: 1.5;
-  margin: 0 0 16px 0;
   word-break: break-word;
 }
 
-.egg-counter {
-  font-size: 12px;
-  font-weight: bold;
-  color: #94a3b8;
+/* 卵インジケーター */
+.egg-indicator-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0px;
+  flex-wrap: wrap;
+  max-width: 80%;
+  margin-top: 15px;
 }
 
-/* 終了時カード */
-.reaction-complete-card {
-  background-color: rgba(255, 255, 255, 0.95);
-  border: 2px solid #cbd5e1;
-  border-radius: 24px;
-  padding: 32px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.egg-wrapper {
+  width: 48px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.3s ease, transform 0.2s ease;
 }
 
-.complete-emoji {
-  font-size: 48px;
-  margin: 0 0 8px 0;
+.egg-wrapper.active {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
-.complete-text {
-  font-size: 18px;
-  font-weight: bold;
-  color: #1e293b;
-  margin-bottom: 20px;
+.egg-wrapper.inactive {
+  opacity: 0.3;
 }
 
-.complete-finish-button {
-  background-color: #22c55e;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* 3. 画面下部: 4つのリアクションボタン行 */
-.reaction-buttons-row {
+.egg-image {
   width: 100%;
-  max-width: 560px;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* 回答（卵背景） */
+.egg-answer-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 500px;
+  height: 400px;
+  margin: 0;
+}
+
+.egg-background-wrapper {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.egg-background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.egg-answer-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70%;
+  max-height: 65%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+.answer-text {
+  font-size: 28px;
+  font-weight: bold;
+  color: #000000;
+  line-height: 1.4;
+  margin: 0;
+  word-break: break-word;
+}
+
+/* 4. リアクションボタン共通設定 */
+.reaction-buttons-row {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  width: 900px;
+  margin-bottom: 8px;
 }
 
-.reaction-action-button {
+.reaction-btn {
   flex: 1;
-  height: 72px;
-  background-color: #ffffff;
-  border: 2px solid #e2e8f0;
+  height: 130px;
+  border: 7px solid #000000;
   border-radius: 16px;
+  font-size: 20px;
+  font-weight: bold;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
-  transition: all 0.15s ease;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  padding: 0 4px;
 }
 
-.reaction-action-button:hover:not(:disabled) {
-  transform: translateY(-4px);
-  border-color: #3b82f6;
-  background-color: #eff6ff;
+.reaction-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 1px 0 #000000;
 }
 
-.reaction-action-button:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.reaction-action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.reaction-icon {
-  font-size: 24px;
+.reaction-emoji {
+  font-size: 28px;
   line-height: 1;
-  margin-bottom: 4px;
 }
 
 .reaction-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: #334155;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* --- リアクションボタン個別の背景色定義 --- */
+
+/* ① 感嘆系（イエロー） */
+.reaction-btn.btn-exclamation {
+  background-color: #ffc107 !important;
+  color: #000000 !important;
+}
+.reaction-btn.btn-exclamation:hover {
+  background-color: #ffc846 !important;
+  border: 7px solid #525252;
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* ② 共感系（オレンジ） */
+.reaction-btn.btn-empathy {
+  background-color: #ff8c00 !important;
+  color: #ffffff !important;
+}
+.reaction-btn.btn-empathy:hover {
+  background-color: #ffb151 !important;
+  border: 7px solid #525252;
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* ③ 賞賛系（ブルー） */
+.reaction-btn.btn-praise {
+  background-color: #2196f3 !important;
+  color: #ffffff !important;
+}
+.reaction-btn.btn-praise:hover {
+  background-color: #6abaff !important;
+  border: 7px solid #525252;
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* ④ 交流系（グリーン） */
+.reaction-btn.btn-interaction {
+  background-color: #4caf50 !important;
+  color: #ffffff !important;
+}
+.reaction-btn.btn-interaction:hover {
+  background-color: #85cf88 !important;
+  border: 7px solid #525252;
+  transform: translateY(-2px) scale(1.02);
 }

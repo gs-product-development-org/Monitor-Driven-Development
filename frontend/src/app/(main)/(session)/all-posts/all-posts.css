@@ -1,135 +1,178 @@
-/* 画面全体レイアウト */
+/* 画面全体設定 */
 .answers-container {
   position: relative;
   width: 100vw;
   height: 100vh;
-  padding: 24px 0 0 0;
-  box-sizing: border-box;
-  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #FF648D;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* 画面上部: お題表示 */
-.answers-topic-header {
+/* ================= 中央上部: お題表示エリア ================= */
+.topic-header-wrapper {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20; /* 投稿画像の上に固定表示 */
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* 1. 上部: 先生の設定したお題表示 */
+.stock-main-topic {
+  pointer-events: auto;
   text-align: center;
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
+  background-color: rgba(255, 255, 255, 0.9);
+  border: 7px solid #000000;
   border-radius: 16px;
-  padding: 10px 32px;
+  padding: 12px 32px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  max-width: 80%;
-  margin: 0 auto 16px auto;
-  z-index: 10;
+  width: 80%;
+  max-width: 900px;
+  box-sizing: border-box;
 }
 
-.answers-topic-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: #64748b;
-  display: block;
-  margin-bottom: 2px;
-}
-
-.answers-topic-title {
-  font-size: 20px;
+.stock-topic-title {
+  font-size: 35px;
   font-weight: bold;
   color: #1e293b;
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0px;
+  padding-bottom: 4px;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
-/* 縦スクロール領域 */
+/* ================= 投稿画像の敷き詰めエリア（縦スクロール） ================= */
 .answers-scroll-area {
-  flex: 1;
-  width: 100%;
-  overflow-y: auto;
-  overflow-x: hidden; /* 横スクロールは防止 */
-  padding: 20px 0 80px 0;
+  width: 100vw;
+  height: 100vh;
+  overflow-y: auto; /* 縦スクロール */
+  overflow-x: hidden; /* 横スクロール防止 */
+  padding-top: 150px; /* お題カードとの重なりを考慮した余白 */
+  padding-bottom: 100px; /* 下部ボタンと被らないように少し広めに確保 */
   box-sizing: border-box;
 }
 
-/* 横に4.5個並び、左右交互に見切れる卵のグリッド */
+/* 画像を敷き詰めるグリッド配置 */
 .answers-egg-grid {
-  display: grid;
-  /* 画面幅の中に約4.5個（1つあたり約22vw）並ぶ計算 */
-  grid-template-columns: repeat(auto-fill, minmax(22vw, 1fr));
-  gap: 20px 16px;
-  width: 110vw; /* 画面からはみ出させて見切れを作る */
-  margin-left: -5vw; /* 左側も見切れさせるため外側に出す */
-  padding: 0 10px;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  row-gap: 0px; 
 }
 
-/* 卵型カードコンテナ */
-.answers-egg-card {
-  aspect-ratio: 4 / 5; /* 卵型の比率 */
+/* 1行分のコンテナ */
+.egg-row {
+  display: flex;
+  width: 100vw;
+  justify-content: flex-start;
+}
+
+/* 一段ごとの交互ずらし（奇数行を左へ半個分引っ張る） */
+.egg-row.offset-row {
+  margin-left: calc(-100vw / 7);
+}
+
+/* 1つの卵カード */
+.egg-card-wrapper {
+  position: relative;
+  width: calc(100vw / 3.5);
+  height: 290px;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.2s ease;
+  box-sizing: border-box;
+  padding: 0px 6px;
 }
 
-/* 奇数行を右にシフトさせて互い違い（ジグザグ）にする */
-.answers-egg-card.shift-row {
-  transform: translateX(11vw);
+/* ダミー（半分表示用・文字なし）の卵 */
+.egg-card-wrapper.dummy-half-egg {
+  pointer-events: none;
 }
 
-/* 卵のデザイン */
-.egg-card-inner {
+/* 共通の背景卵画像 */
+.egg-bg-image {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% 35%, #ffffff 0%, #f1f5f9 100%);
-  border: 3px solid #60a5fa;
-  border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; /* 卵の曲線 */
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 画像上の回答テキストエリア */
+.egg-content-overlay {
+  position: relative;
+  z-index: 2;
+  width: 75%;
+  height: 75%;
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 16px;
-  box-sizing: border-box;
+  justify-content: center;
   text-align: center;
+  padding: 8px;
+  box-sizing: border-box;
 }
 
-.egg-card-inner:hover {
-  transform: scale(1.03);
-  border-color: #2563eb;
-}
-
-.egg-text {
-  font-size: 14px;
-  font-weight: bold;
-  color: #1e293b;
-  line-height: 1.4;
+.egg-answer-text {
   margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #000000;
+  line-height: 1.35;
   word-break: break-word;
   display: -webkit-box;
-  -webkit-line-clamp: 4; /* テキストが長すぎる場合の省略表示 */
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-/* 画面右下: 先生用の「ガチャへ進む」固定ボタン */
-.answers-teacher-action {
-  position: absolute;
-  right: 24px;
+/* ================= 右下: 教師用ガチャ遷移ボタン ================= */
+.teacher-gacha-button-wrapper {
+  position: fixed;
   bottom: 24px;
-  z-index: 20;
+  right: 24px;
+  z-index: 30; /* スクロールエリアやお題より前面に配置 */
 }
 
-.go-gacha-button {
-  height: 52px;
-  padding: 0 28px;
-  font-size: 16px;
+.gacha-action-button {
+  width: 300px;
+  height: 80px;
+  padding: 0 24px;
+  border: 6px solid #000000;
+  border-radius: 16px;
+  font-size: 35px;
   font-weight: bold;
-  background-color: #f59e0b; /* ガチャに合わせた目立つカラー */
-  border-color: #d97706;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+  background-color: #FF3333;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0px;
+  padding-bottom: 6px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-.go-gacha-button:hover {
-  background-color: #d97706;
+.gacha-action-button:hover {
+  background-color: #ff5555;
+  transform: translateY(-3px) scale(1.03);
+}
+
+.gacha-action-button:active {
+  transform: translateY(1px) scale(0.98);
 }

@@ -5,10 +5,7 @@
   height: 100vh;
   padding: 32px 24px;
   box-sizing: border-box;
-  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #ffee00;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -25,8 +22,6 @@
   justify-content: center;
   align-items: center;
   margin-bottom: 28px;
-  /* 待機中感を出すための優しく上下に浮遊するアニメーション */
-  animation: floatAnimation 3s ease-in-out infinite;
 }
 
 .wait-image {
@@ -35,26 +30,8 @@
   object-fit: contain;
 }
 
-/* 浮遊アニメーション */
-@keyframes floatAnimation {
-  0% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-12px);
-  }
-  100% {
-    transform: translateY(0px);
-  }
-}
-
-/* 画像の下: 黒文字文章コンテナ */
+/* 画像の下: メッセージテキスト */
 .wait-message-container {
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
-  border-radius: 20px;
-  padding: 16px 32px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   max-width: 90%;
   text-align: center;
 }
@@ -62,9 +39,154 @@
 /* 黒文字文章 */
 .wait-message-text {
   color: #000000;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: bold;
   line-height: 1.5;
   margin: 0;
   word-break: break-word;
+}
+
+/* 教師専用: 右下コントロールエリア */
+.teacher-control-area {
+  position: absolute;
+  bottom: 32px;
+  right: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 待機端末数の表示 */
+.waiting-counter {
+  font-size: 18px;
+  font-weight: bold;
+  color: #000000;
+  background-color: rgba(255, 255, 255, 0.85);
+  padding: 6px 14px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.count-highlight {
+  font-size: 22px;
+  color: #ef4444;
+}
+
+/* 赤い遷移ボタン */
+.transition-btn {
+  height: 100px;
+  width: 350px;
+  background-color: #ff3333;
+  border: 8px solid #000000;
+  border-radius: 1.3rem;
+  font-size: 30px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 15px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  color: #ffffff;
+}
+
+.transition-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  background-color: #ff7171;
+  border: 9px solid #525252;
+}
+
+.transition-btn:active {
+  transform: translateY(0);
+}
+
+/* モーダル */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.modal-card {
+  height: 500px;
+  width: 800px;
+  background-color: rgba(100, 116, 139, 0.95);
+  border: 4px solid #000000;
+  border-radius: 16px;
+  padding: 32px 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+/* 説明文スタイル */
+.modal-subtext {
+  color: #ffffff;
+  font-size: 30px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.6;
+  font-family: 'DotGothic16', sans-serif;
+  margin: 0;
+}
+
+/* ボタンエリア */
+.modal-buttons-row {
+  display: flex;
+  gap: 50px;
+  width: 100%;
+  justify-content: center;
+  margin-top: 40px;
+}
+
+.modal-btn {
+  width: 220px;
+  height: 80px;
+  border-radius: 10px;
+  font-size: 30px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 5px solid #000000;
+  transition: opacity 0.2s, transform 0.1s;
+  font-family: 'DotGothic16', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0px;
+  padding-bottom: 4px;
+}
+
+.modal-btn-cancel {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.modal-btn-cancel:hover {
+  background-color: #ffffff;
+  border: 5px solid #525252;
+  transform: translateY(-2px) scale(1.02);
+}
+
+.modal-btn-confirm {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+.modal-btn-confirm:hover {
+  background-color: #ff7171;
+  border: 5px solid #525252;
+  transform: translateY(-2px) scale(1.02);
 }

@@ -26,7 +26,7 @@ const MOCK_TREASURES: TreasureItem[] = [
   {
     id: '3',
     topicTitle: 'タイムマシンがあったらどこに行きたい？',
-    answerText: '未来の自分の家に行って何をしているか見る',
+    answerText: '未来の自ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ',
   },
 ];
 
@@ -56,9 +56,14 @@ export default function TreasureBoxPage() {
 
   return (
     <div className="treasure-container">
-      {/* 画面左上: ★もどるボタン（左向きの黒い星＋黒文字） */}
-      <button className="treasure-back-button" onClick={handleBack} aria-label="もどる">
-        <span className="star-icon">★</span>
+      {/* 画面左上: もどるボタン（左向きの黒い▲＋黒文字） */}
+      <button
+        type="button"
+        onClick={() => router.push('/home')}
+        className="history-back-button"
+        aria-label="もどる"
+      >
+        <span className="back-arrow">▲</span>
         <span className="back-text">もどる</span>
       </button>
 
@@ -87,7 +92,7 @@ export default function TreasureBoxPage() {
             {/* 下側: 横向きの卵画像 ＋ 中の回答テキスト */}
             <div className="horizontal-egg-wrapper">
               <img
-                src="/images/egg-horizontal.png"
+                src="/images/contents/history-egg.png"
                 alt="横向きの卵"
                 className="horizontal-egg-img"
               />

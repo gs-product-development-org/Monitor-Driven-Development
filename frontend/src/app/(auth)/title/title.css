@@ -3,12 +3,9 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  padding: 24px;
+  padding: 80px;
   box-sizing: border-box;
-  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #FFEE00;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -17,7 +14,7 @@
 }
 
 /* 画面左上: 「◀ もどる」ボタン */
-.back-button {
+.title-back-button {
   position: absolute;
   top: 24px;
   left: 24px;
@@ -29,27 +26,32 @@
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 8px;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 10;
 }
 
-.back-button:hover {
+.title-back-button:hover {
   opacity: 0.7;
+  transform: translateX(-4px);
 }
 
 /* 左向きの黒い三角 */
 .back-arrow {
   color: #000000;
-  font-size: 16px;
+  font-size: 25px;
   display: inline-block;
-  transform: rotate(-90deg); /* 三角形を左向きにする */
+  transform: rotate(-90deg); /* ▲を左向き◀に回転 */
+  line-height: 1;
 }
 
 /* 黒文字の「もどる」 */
 .back-text {
   color: #000000;
-  font-size: 18px;
+  font-family: 'DotGothic16', sans-serif;
+  font-size: 25px;
   font-weight: bold;
+  line-height: 1;
+  margin-bottom: 4px;
 }
 
 /* 画面上部: 2行テキスト */
@@ -60,14 +62,14 @@
 
 .title-sub {
   color: #000000;
-  font-size: 22px;
+  font-size: 35px;
   font-weight: bold;
   margin: 0 0 8px 0;
 }
 
 .title-main {
   color: #000000;
-  font-size: 36px;
+  font-size: 50px;
   font-weight: bold;
   margin: 0;
 }
@@ -98,7 +100,7 @@
 
 .title-description {
   color: #000000;
-  font-size: 18px;
+  font-size: 35px;
   font-weight: bold;
   margin: 0;
   white-space: nowrap; /* 1行で表示 */
