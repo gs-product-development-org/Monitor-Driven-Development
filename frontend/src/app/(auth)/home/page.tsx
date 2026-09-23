@@ -1,25 +1,50 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore, UserState } from '@/stores/useUserStore';
 import { Button } from '@/components/ui/Button';
+import { supabase } from '@/lib/supabase';
 import './home.css';
 
 export default function ZooHomePage() {
   const router = useRouter();
 
-  // Zustandストアからユーザー情報を取得
+  // Zustandストアからユーザー情報と更新用アクションを取得
   const user = useUserStore((state: UserState) => state.user);
+  const setUser = useUserStore((state: UserState) => state.setUser);
   const clearUser = useUserStore((state: UserState) => state.clearUser);
 
-  // 教員かどうか判定 (デモ用に true 固定)
-  const isTeacher = true;
+  // ページリロード時に localStorage からユーザー情報を復元
+  useEffect(() => {
+    if (!user) {
+      const savedUser = sessionStorage.getItem('user_info');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      } else {
+        // ログイン情報がない場合はログイン画面へリダイレクト
+        router.push('/login');
+      }
+    }
+  }, [user, setUser, router]);
+
+  // ★ 教員かどうか判定（role === false が教師）
+  const isTeacher = user?.role === 'teacher';
 
   // ログアウト処理
   const handleLogout = () => {
-    clearUser();
-    router.push('/login');
+    try {
+      // 1. Zustandのユーザー状態をクリア
+      clearUser();
+
+      // 2. セッションストレージのユーザー情報を削除
+      sessionStorage.removeItem('user_info');
+    } catch (error) {
+      console.error('ログアウト処理エラー:', error);
+    } finally {
+      // 3. ログイン画面へ遷移
+      router.push('/login');
+    }
   };
 
   // 各ボタンの遷移アクション
