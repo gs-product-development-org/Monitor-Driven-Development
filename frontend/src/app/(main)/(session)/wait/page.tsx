@@ -4,7 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import './wait.css';
 
-type WaitMode = 'answer_submitted' | 'topic_cushion';
+// 'reaction_completed' を追加
+type WaitMode = 'answer_submitted' | 'topic_cushion' | 'reaction_completed';
 
 const OBTAINED_GACHA_IMAGES = [
   '/images/animals/title-example.png',
@@ -39,7 +40,7 @@ function WaitContent({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // ★ URLから ?mode= を取得。無ければ 'answer_submitted'
+  // URLから ?mode= を取得。無ければ 'answer_submitted'
   const mode = (searchParams.get('mode') as WaitMode) || 'answer_submitted';
 
   const [randomImage, setRandomImage] = useState<string>('');
@@ -59,9 +60,16 @@ function WaitContent({
     return () => clearTimeout(timer);
   }, [mode, router]);
 
+  // モーダルの確定ボタン押下時
   const handleConfirmTransition = () => {
     setIsModalOpen(false);
-    router.push('/anonymous-reveal');
+    if (mode === 'reaction_completed') {
+      // リアクション完了後の遷移先（例: 結果画面など）
+      router.push('/title-result');
+    } else {
+      // 回答提出後の遷移先
+      router.push('/anonymous-reveal');
+    }
   };
 
   // モードごとのテキストをJSXで直接定義
@@ -75,11 +83,41 @@ function WaitContent({
         </>
       );
     }
+    if (mode === 'reaction_completed') {
+      return (
+        <>
+          みんなが終わるのを待ってね！
+          <br />
+          他の人の画面をのぞいたり、じゃましたりしないでね！
+        </>
+      );
+    }
+    // デフォルト: 'answer_submitted'
     return (
       <>
         みんなが終わるのを待ってね！
         <br />
         他の人の画面をのぞいたり、じゃましたりしないでね！
+      </>
+    );
+  };
+
+  // モーダル内の説明テキスト
+  const renderModalText = () => {
+    if (mode === 'reaction_completed') {
+      return (
+        <>
+          「移動する」を押すと、児童全員とあなたの端末で
+          <br />
+          称号画面がスタートします。
+        </>
+      );
+    }
+    return (
+      <>
+        「移動する」を押すと、児童全員とあなたの端末で
+        <br />
+        リアクション画面がスタートします。
       </>
     );
   };
@@ -102,8 +140,8 @@ function WaitContent({
         <p className="wait-message-text">{renderMessage()}</p>
       </div>
 
-      {/* 回答後 ＋ 教師画面のみ表示する右下エリア */}
-      {mode === 'answer_submitted' && isTeacher && (
+      {/* 回答提出後 ＆ リアクション完了後 ＋ 教師画面のみ表示する右下エリア */}
+      {(mode === 'answer_submitted' || mode === 'reaction_completed') && isTeacher && (
         <div className="teacher-control-area">
           <div className="waiting-counter">
             待機中: <span className="count-highlight">{waitingCount}</span> / {totalCount}
@@ -113,7 +151,7 @@ function WaitContent({
             className="transition-btn"
             onClick={() => setIsModalOpen(true)}
           >
-            リアクション画面へ
+            {mode === 'reaction_completed' ? '称号画面へ' : 'リアクション画面へ'}
           </button>
         </div>
       )}
@@ -122,11 +160,7 @@ function WaitContent({
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-card">
-            <p className="modal-subtext">
-              「移動する」を押すと、児童全員とあなたの端末で
-              <br />
-              リアクション画面がスタートします。
-            </p>
+            <p className="modal-subtext">{renderModalText()}</p>
 
             <div className="modal-buttons-row">
               <button

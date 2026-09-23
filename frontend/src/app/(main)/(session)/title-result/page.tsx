@@ -15,26 +15,36 @@ type ReactionItem = {
   color: string;
 };
 
+interface TitleData {
+  id: string;
+  name: string;
+  description: string;
+  characterImage: string;
+}
+
 const INITIAL_REACTIONS: ReactionItem[] = [
-  { type: 'like', name: 'いいね', count: 5, color: '#3b82f6' },      // 青
-  { type: 'laugh', name: 'おもしろい', count: 8, color: '#f59e0b' },  // オレンジ
-  { type: 'surprise', name: 'びっくり', count: 0, color: '#ec4899' }, // ピンク (0個)
-  { type: 'great', name: 'すごい', count: 3, color: '#10b981' },     // 緑
+  { type: 'like', name: 'いいね', count: 5, color: '#3b82f6' },
+  { type: 'laugh', name: 'おもしろい', count: 8, color: '#f59e0b' },
+  { type: 'surprise', name: 'びっくり', count: 0, color: '#ec4899' },
+  { type: 'great', name: 'すごい', count: 3, color: '#10b981' },
 ];
 
 export default function ResultPage() {
   const router = useRouter();
 
-  const [topicTitle] = useState<string>('朝起きて最初にすることは？');
-  const [titleName] = useState<string>('ユーモアスター');
-  const [titleDescription] = useState<string>(
-    '「おもしろい」リアクションをたくさん獲得しました！みんなの朝を笑顔にする最高の発想力を持っています。'
-  );
-  const [characterImage] = useState<string>('/images/titles/humor-star.png');
+  const [isPrivate] = useState<boolean>(false);
+
+  // ★ 称号データ（フォールバック用画像パス fallbackImage も持たせる構造）
+  const [titleData] = useState<TitleData>({
+    id: 'humor-star',
+    name: 'ユーモアスター',
+    description:
+      '「おもしろい」リアクションをたくさん獲得しました！みんなの朝を笑顔にする最高の発想力を持っています。',
+    characterImage: '/images/animals/title-example.png',
+  });
 
   const [reactions] = useState<ReactionItem[]>(INITIAL_REACTIONS);
 
-  // 0個のリアクションを除外
   const activeChartData = reactions.filter((item) => item.count > 0);
 
   const handleGoToAllAnswers = () => {
@@ -43,70 +53,95 @@ export default function ResultPage() {
 
   return (
     <div className="result-container">
-      {/* 画面1番上: お題表示 */}
-      <div className="result-topic-header">
-        <span className="result-topic-label">お題</span>
-        <h1 className="result-topic-title">{topicTitle}</h1>
-      </div>
-
       {/* メインコンテンツエリア */}
       <div className="result-main-content">
         {/* 左半分: 称号表示 */}
-        <div className="result-left-section">
-          <div className="title-header-box">
-            <span className="title-sub-label">獲得した称号</span>
-            <h2 className="title-main-text">あなたの称号は【{titleName}】タイプ！</h2>
-          </div>
+        <div className="result-left-section-clean">
+          {!isPrivate ? (
+            /* 通常時（公開選択時） */
+            <>
+              <div className="title-header-box">
+                <h2 className="title-main-text">
+                  あなたの称号は<br />【{titleData.name}】タイプ！
+                </h2>
+              </div>
 
-          <div className="title-image-wrapper">
-            <img
-              src={characterImage}
-              alt={titleName}
-              className="title-character-image"
-              onError={(e) => {
-                (e.target as HTMLElement).style.display = 'none';
-              }}
-            />
-            <div className="title-image-fallback">
-              <span className="fallback-emoji">🌟</span>
+              <div className="title-image-wrapper">
+                <img
+                  src={titleData.characterImage}
+                  alt={titleData.name}
+                  className="title-character-image"
+                  onError={(e) => {
+                    // メイン画像が読み込めない場合、フォールバック要素を表示
+                    (e.target as HTMLElement).style.display = 'none';
+                    const fallback = (e.target as HTMLElement).nextElementSibling as HTMLElement;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                {/* ★ 絵文字から画像表示へ変更 */}
+                <div className="title-image-fallback" style={{ display: 'none' }}>
+                  <img
+                    src="/images/animals/title-example.png"
+                    alt="称号フォールバック画像"
+                    className="fallback-image"
+                  />
+                </div>
+              </div>
+
+              <div className="title-description-box">
+                <p className="description-text">{titleData.description}</p>
+              </div>
+            </>
+          ) : (
+            /* ★ 非公開選択時 */
+            <div className="private-title-placeholder">
+              <h2 className="title-main-text">こんな称号があるよ！</h2>
+              <div className="title-image-wrapper">
+                <div className="title-image-fallback" style={{ display: 'flex' }}>
+                  <img
+                    src="/images/animals/title-example.png"
+                    alt="称号紹介画像"
+                    className="fallback-image"
+                  />
+                </div>
+              </div>
+              <div className="title-description-box">
+                <p className="description-text">
+                  非公開選択時は、獲得称号ではなく全体で用意されている称号の紹介・一覧メッセージが表示されます。
+                </p>
+              </div>
             </div>
-          </div>
-
-          <div className="title-description-box">
-            <p className="description-text">{titleDescription}</p>
-          </div>
+          )}
         </div>
 
-        {/* 右半分: リアクション内訳（個数は非表示） */}
+        {/* 右半分: リアクション内訳 */}
         <div className="result-right-section">
           <h3 className="chart-title">リアクションの内訳</h3>
 
           {activeChartData.length > 0 ? (
             <div className="chart-wrapper">
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={activeChartData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={90}
+                    innerRadius={45}
+                    outerRadius={75}
                     paddingAngle={4}
                     dataKey="count"
                     nameKey="name"
-                    /* グラフ上のラベルは割合(%)のみ表示 */
                     label={({ name, percent = 0 }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {activeChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  {/* ホバー時のツールチップも個数を出さず、リアクション名のみ表示 */}
                   <Tooltip formatter={() => ['', '']} labelFormatter={(name) => `${name}`} />
                 </PieChart>
               </ResponsiveContainer>
 
-              {/* グラフ下の凡例（個数は排除し、色と名前のみを表示） */}
+              {/* 凡例 */}
               <div className="chart-legend-list">
                 {activeChartData.map((item) => (
                   <div key={item.type} className="legend-item">

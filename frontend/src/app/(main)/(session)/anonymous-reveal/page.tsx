@@ -4,121 +4,142 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import './anonymous-reveal.css';
 
-// 回答データ（卵）の型定義
-type AnswerEgg = {
+export type Genre = '学校' | '日常' | '趣味' | '雑学' | 'おもしろ';
+
+interface ReactionOption {
   id: string;
-  authorName: string;
-  text: string;
+  label: string;
+  emoji: string;
+  colorClass: string;
+}
+
+// 5種類のジャンルごとに異なる4つのリアクションセット
+// 左から順に: [感嘆系(黄), 共感系(橙), 賞賛系(青), 交流系(緑)]
+const REACTION_SETS: Record<Genre, ReactionOption[]> = {
+  学校: [
+    { id: 'naruhodo', label: 'なるほど！', emoji: '💡', colorClass: 'btn-exclamation' },
+    { id: 'wakaru', label: 'わかる！', emoji: '🤝', colorClass: 'btn-empathy' },
+    { id: 'sugoi', label: 'すごーい！', emoji: '✨', colorClass: 'btn-praise' },
+    { id: 'shiritai', label: 'もっと教えて！', emoji: '💬', colorClass: 'btn-interaction' },
+  ],
+  日常: [
+    { id: 'oishisou', label: 'おいしそう！', emoji: '😋', colorClass: 'btn-exclamation' },
+    { id: 'iine', label: 'いいね！', emoji: '👍', colorClass: 'btn-empathy' },
+    { id: 'saikou', label: '最高！', emoji: '👑', colorClass: 'btn-praise' },
+    { id: 'issho', label: '一緒に行きたい！', emoji: '🙌', colorClass: 'btn-interaction' },
+  ],
+  趣味: [
+    { id: 'shiranakatta', label: '奥が深い！', emoji: '😲', colorClass: 'btn-exclamation' },
+    { id: 'nakama', label: '仲間！', emoji: '❤️', colorClass: 'btn-empathy' },
+    { id: 'kami', label: 'プロ級！', emoji: '🔥', colorClass: 'btn-praise' },
+    { id: 'habata', label: '語りたい！', emoji: '🗣️', colorClass: 'btn-interaction' },
+  ],
+  雑学: [
+    { id: 'hee', label: 'へぇ〜！', emoji: '🧠', colorClass: 'btn-exclamation' },
+    { id: 'suru', label: '確かに！', emoji: '👌', colorClass: 'btn-empathy' },
+    { id: 'tensai', label: '物知り！', emoji: '👏', colorClass: 'btn-praise' },
+    { id: 'tameshita', label: '試したい！', emoji: '🧪', colorClass: 'btn-interaction' },
+  ],
+  おもしろ: [
+    { id: 'waw', label: 'ウケる！', emoji: '🤣', colorClass: 'btn-exclamation' },
+    { id: 'yabai', label: 'ツボった！', emoji: '😆', colorClass: 'btn-empathy' },
+    { id: 'hasou', label: '発想の神！', emoji: '💡', colorClass: 'btn-praise' },
+    { id: 'tuduki', label: '続き気になる！', emoji: '👀', colorClass: 'btn-interaction' },
+  ],
 };
 
-// 4種類のリアクション定義
-type ReactionType = 'like' | 'laugh' | 'suprise' | 'great';
+interface AnswerData {
+  id: string;
+  content: string;
+}
 
-const REACTION_LIST: { type: ReactionType; label: string; icon: string }[] = [
-  { type: 'like', label: 'いいね', icon: '👍' },
-  { type: 'laugh', label: 'おもしろい', icon: '🤣' },
-  { type: 'suprise', label: 'びっくり', icon: '😲' },
-  { type: 'great', label: 'すごい', icon: '✨' },
-];
+interface AnonymousRevealPageProps {
+  genre?: Genre;
+  topicText?: string;
+  answers?: AnswerData[];
+}
 
-// ダミーデータ（仮で4つの卵）
-const MOCK_EGGS: AnswerEgg[] = [
-  { id: '1', authorName: 'たろう', text: '朝起きてすぐに冷たい水を一杯飲むことです！' },
-  { id: '2', authorName: 'はなこ', text: '飼っている犬の散歩に行って挨拶をすること。' },
-  { id: '3', authorName: 'ケン', text: '二度寝を限界まで楽しむこと！' },
-  { id: '4', authorName: 'サクラ', text: '好きな音楽を聴いてテンションを上げます。' },
-];
-
-export default function ReactionPage() {
+export default function AnonymousRevealPage({
+  genre = '学校',
+  topicText = '今日の授業で一番なるほどと思ったことは？',
+  answers = [
+    { id: '1', content: '光の屈折でプールの中の足が短く見えること！' },
+    { id: '2', content: '植物も夜に呼吸をしていること。' },
+    { id: '3', content: '分数の割り算はひっくり返して掛ける理由。' },
+    { id: '4', content: '歴史の年代の覚え方の語呂合わせ。' },
+  ],
+}: AnonymousRevealPageProps) {
   const router = useRouter();
-
-  // お題タイトル
-  const [topicTitle] = useState<string>('朝起きて最初にすることは？');
-
-  // 卵データ一覧
-  const [eggs] = useState<AnswerEgg[]>(MOCK_EGGS);
-
-  // 現在表示中の卵のインデックス
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
-  // アニメーション用 State ('idle' | 'sliding-out')
-  const [slideState, setSlideState] = useState<'idle' | 'sliding-out'>('idle');
+  const totalAnswers = answers.length;
+  const currentAnswer = answers[currentIndex];
 
-  // 終了状態フラグ
-  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const currentReactions = REACTION_SETS[genre] || REACTION_SETS['学校'];
 
-  // リアクションボタン押下時の処理
-  const handleReaction = (reaction: ReactionType) => {
-    if (slideState !== 'idle' || isCompleted) return;
-
-    const currentEgg = eggs[currentIndex];
-    console.log(`卵ID: ${currentEgg.id} にリアクション [${reaction}] を送信しました`);
-
-    // 左へスライドアウトのアニメーション開始
-    setSlideState('sliding-out');
-
-    // アニメーション完了後に次の卵へ切り替え
-    setTimeout(() => {
-      if (currentIndex + 1 < eggs.length) {
-        setCurrentIndex((prev) => prev + 1);
-        setSlideState('idle');
-      } else {
-        // すべての卵をチェックし終えた場合
-        setIsCompleted(true);
-      }
-    }, 350); // CSSアニメーション時間と合わせる
+  const handleSelectReaction = (reactionId: string) => {
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < totalAnswers) {
+      setCurrentIndex(nextIndex);
+    } else {
+      router.push('/wait?mode=reaction_completed');
+    }
   };
 
-  const currentEgg = eggs[currentIndex];
-
   return (
-    <div className="reaction-container">
-      {/* 1. 画面一番上: お題表示 */}
-      <div className="reaction-topic-header">
-        <span className="reaction-topic-label">みんなのお題</span>
-        <h1 className="reaction-topic-title">{topicTitle}</h1>
-      </div>
+    <div className="reveal-container">
+      {/* 1. お題表示 */}
+      <header className="stock-main-topic">
+        <h1 className="stock-topic-title">「{topicText}」</h1>
+      </header>
 
-      {/* 2. 画面中央: 投稿内容が書かれた卵（カード）エリア */}
-      <div className="reaction-egg-stage">
-        {!isCompleted && currentEgg ? (
-          <div className="egg-card-wrapper">
-            <div className={`egg-card ${slideState === 'sliding-out' ? 'slide-left' : ''}`}>
-              <div className="egg-author">{currentEgg.authorName} さんの回答</div>
-              <p className="egg-content-text">{currentEgg.text}</p>
-              <div className="egg-counter">
-                {currentIndex + 1} / {eggs.length}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="reaction-complete-card">
-            <p className="complete-emoji">🎉</p>
-            <p className="complete-text">すべての回答にリアクションしました！</p>
-            <button
-              onClick={() => router.push('/zoo')}
-              className="complete-finish-button"
+      {/* 2. 卵インジケーター */}
+      <div className="egg-indicator-bar">
+        {answers.map((_, index) => {
+          const isActive = index <= currentIndex;
+          return (
+            <div
+              key={index}
+              className={`egg-wrapper ${isActive ? 'active' : 'inactive'}`}
             >
-              動物園へ戻る
-            </button>
-          </div>
-        )}
+              <img
+                src="/images/contents/egg.png"
+                alt={`卵 ${index + 1}`}
+                className="egg-image"
+              />
+            </div>
+          );
+        })}
       </div>
 
-      {/* 3. 画面下部: 4種類のリアクションボタン */}
-      <div className="reaction-buttons-row">
-        {REACTION_LIST.map((item) => (
+      {/* 3. 卵背景の回答表示 */}
+      <main className="egg-answer-container">
+        <div className="egg-background-wrapper">
+          <img
+            src="/images/contents/answer-egg.png"
+            alt="回答背景の卵"
+            className="egg-background-image"
+          />
+          <div className="egg-answer-content">
+            <p className="answer-text">{currentAnswer?.content}</p>
+          </div>
+        </div>
+      </main>
+
+      {/* 4. 4択リアクションボタン */}
+      <footer className="reaction-buttons-row">
+        {currentReactions.map((option) => (
           <button
-            key={item.type}
-            onClick={() => handleReaction(item.type)}
-            disabled={isCompleted || slideState !== 'idle'}
-            className="reaction-action-button"
+            key={option.id}
+            type="button"
+            className={`reaction-btn ${option.colorClass}`}
+            onClick={() => handleSelectReaction(option.id)}
           >
-            <span className="reaction-icon">{item.icon}</span>
-            <span className="reaction-label">{item.label}</span>
+            <span className="reaction-emoji">{option.emoji}</span>
+            <span className="reaction-label">{option.label}</span>
           </button>
         ))}
-      </div>
+      </footer>
     </div>
   );
 }
