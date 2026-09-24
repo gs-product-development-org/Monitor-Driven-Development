@@ -181,3 +181,22 @@
   font-size: 18px;
   font-weight: bold;
 }
+
+/* 宝箱が空の場合のコンテナ（画面中央寄せ） */
+.treasure-empty-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* 宝箱が空の場合のメッセージテキスト */
+.treasure-empty-text {
+  color: #666;
+  font-size: 50px;
+  font-weight: bold;
+  text-align: center;
+  word-break: break-all;
+  margin: 0;
+}
