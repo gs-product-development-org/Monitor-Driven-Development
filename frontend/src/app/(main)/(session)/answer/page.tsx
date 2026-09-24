@@ -7,8 +7,17 @@ import { supabase } from '@/lib/supabase';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './answer.css';
 
-// SetTopicPage で定義した sessionStorage のキー名
+// sessionStorage 保存用キー名定数
 const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
+
+// genre_id から genre_name へのマッピング
+const GENRE_ID_TO_NAME: Record<number, string> = {
+  1: '学校',
+  2: '日常',
+  3: '好きなもの',
+  4: '雑談',
+  5: 'ユニーク',
+};
 
 type StockTopic = {
   id: string;
@@ -17,19 +26,21 @@ type StockTopic = {
 
 type ActionType = 'chest' | 'announce';
 
+type TopicInfo = {
+  topic_id: number | null;
+  class_id: number | null;
+  genre_name: string;
+  topic_content: string;
+};
+
 export default function TopicStockPage() {
   const router = useRouter();
   const { user } = useRequireAuth(); // ユーザー情報の取得
 
   const [step, setStep] = useState<'input' | 'action'>('input');
-  
-  // sessionStorage から復元するお題データ用 State
-  const [currentTopicInfo, setCurrentTopicInfo] = useState<{
-    topic_id: number | null;
-    class_id: number | null;
-    genre_name: string;
-    topic_content: string;
-  }>({
+
+  // お題データ用 State
+  const [currentTopicInfo, setCurrentTopicInfo] = useState<TopicInfo>({
     topic_id: null,
     class_id: null,
     genre_name: 'お題',
@@ -51,23 +62,86 @@ export default function TopicStockPage() {
   const chatAreaRef = useRef<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState<boolean>(false);
 
-  // 初期化：sessionStorage からお題データを取り出す
+  // ★初期化：sessionStorage に無ければ RPC `get_topic` から取得して一律キャッシュ化
   useEffect(() => {
-    const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setCurrentTopicInfo({
-          topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
-          class_id: parsed.class_id ? Number(parsed.class_id) : null,
-          genre_name: parsed.genre_name || 'お題',
-          topic_content: parsed.topic_content || '',
-        });
-      } catch (e) {
-        console.error('sessionStorage の読み込みに失敗しました:', e);
+    const loadTopic = async () => {
+      // 1. まず sessionStorage から復元を試みる
+      const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.topic_id && parsed.topic_content) {
+            setCurrentTopicInfo({
+              topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
+              class_id: parsed.class_id ? Number(parsed.class_id) : null,
+              genre_name: parsed.genre_name || 'お題',
+              topic_content: parsed.topic_content || '',
+            });
+            return; // キャッシュがあればDBアクセスせず終了
+          }
+        } catch (e) {
+          console.error('sessionStorage の読み込みエラー:', e);
+        }
       }
-    }
-  }, []);
+
+      // 2. キャッシュがない場合は DB（RPC: get_topic）から最新お題を取得
+      try {
+        let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
+        if (!classId) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          classId = Number(sessionData?.session?.user?.user_metadata?.class_id);
+        }
+
+        if (!classId) {
+          console.error('クラスIDを取得できませんでした');
+          return;
+        }
+
+        // RPC 関数の呼び出し
+        const { data, error } = await supabase.rpc('get_topic', {
+          p_class_id: classId,
+        });
+
+        if (error) {
+          console.error('get_topic の呼び出しに失敗:', {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            fullError: error,
+          });
+          return;
+        }
+
+        const latestTopic = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+        if (latestTopic) {
+          const resolvedGenreName =
+            latestTopic.genre_name ||
+            (latestTopic.genre_id ? GENRE_ID_TO_NAME[Number(latestTopic.genre_id)] : 'お題');
+
+          const topicData = {
+            topic_id: Number(latestTopic.topic_id),
+            class_id: Number(latestTopic.class_id),
+            genre_name: resolvedGenreName,
+            topic_content: latestTopic.topic_content,
+          };
+
+          // State を更新
+          setCurrentTopicInfo(topicData);
+
+          // 次回の表示や別画面用に sessionStorage へ保存
+          sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(topicData));
+        } else {
+          console.warn('該当するクラスのお題が見つかりませんでした');
+        }
+      } catch (err) {
+        console.error('お題取得中に例外エラーが発生:', err);
+      }
+    };
+
+    loadTopic();
+  }, [user]);
 
   const checkScrollable = () => {
     const el = chatAreaRef.current;
@@ -114,7 +188,7 @@ export default function TopicStockPage() {
     setPendingAction(action);
   };
 
-  // ★最終確定処理（Supabase RPC create_post を 1回呼び出し）
+  // 最終確定処理
   const handleActionModalSubmit = async () => {
     const selectedTopic = stockList.find((item) => item.id === selectedTopicId);
     if (!selectedTopic || !pendingAction || isSubmitting) return;
@@ -122,11 +196,9 @@ export default function TopicStockPage() {
     setIsSubmitting(true);
 
     try {
-      // ユーザーID と クラスID の取得
       let userId: number | null = (user as any)?.user_id ? Number((user as any).user_id) : null;
       let classId: number | null = currentTopicInfo.class_id ?? ((user as any)?.class_id ? Number((user as any).class_id) : null);
 
-      // バックアップ取得 (Supabase Session)
       if (!userId || !classId) {
         const { data: sessionData } = await supabase.auth.getSession();
         const sessionUser = sessionData?.session?.user;
@@ -144,7 +216,6 @@ export default function TopicStockPage() {
 
       const isPosted = pendingAction === 'announce'; // announce なら true, chest なら false
 
-      // 統合された RPC `create_post` を実行
       const { data, error } = await supabase.rpc('create_post', {
         p_class_id: classId,
         p_user_id: userId,
@@ -185,7 +256,7 @@ export default function TopicStockPage() {
         </h1>
       </div>
 
-      {/* ================= フェーズ 1: 書き溜め・選択 ================= */}
+      {/* フェーズ 1: 書き溜め・選択 */}
       {step === 'input' && (
         <>
           <div className="stock-center-wrapper">
@@ -228,7 +299,6 @@ export default function TopicStockPage() {
             )}
           </div>
 
-          {/* 下部: 入力欄 ＋ 確定ボタン */}
           <div className="stock-input-area">
             <div className="stock-input-wrapper">
               <input
@@ -273,7 +343,7 @@ export default function TopicStockPage() {
         </>
       )}
 
-      {/* ================= フェーズ 2: アクション選択 ================= */}
+      {/* フェーズ 2: アクション選択 */}
       {step === 'action' && (
         <div className="action-phase-wrapper">
           <div className="action-illustration-box">
@@ -306,7 +376,6 @@ export default function TopicStockPage() {
             </button>
           </div>
 
-          {/* フェーズ 2 確認モーダル */}
           {pendingAction && (
             <div className="modal-overlay">
               <div className="modal-card">
@@ -326,8 +395,7 @@ export default function TopicStockPage() {
                       この回答を公開しますか？<br />
                       誰が公開したかはわからないよ
                     </>
-                  )
-                }
+                  )}
                 </p>
 
                 <div className="modal-buttons-row">
@@ -358,7 +426,7 @@ export default function TopicStockPage() {
         </div>
       )}
 
-      {/* ================= フェーズ 1 確認モーダル ================= */}
+      {/* フェーズ 1 確認モーダル */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-card">

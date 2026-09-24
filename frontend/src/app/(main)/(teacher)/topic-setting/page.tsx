@@ -125,7 +125,7 @@ export default function SetTopicPage() {
     setIsModalOpen(true);
   };
 
-  // 5. モーダル内「始める」ボタンクリック処理（DB登録 ＋ sessionStorage保存）
+  // 5. モーダル内「始める」ボタンクリック処理（DB登録のみ実行）
   const handleModalSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -174,28 +174,12 @@ export default function SetTopicPage() {
         return;
       }
 
-      // DBから返却されたレスポンスデータを取得
-      const createdRecord = Array.isArray(data) ? data[0] : data;
-      const createdTopicId = createdRecord?.topic_id ?? null;
+      // 新しいお題が設定されたため、過去のキャッシュを削除する
+      sessionStorage.removeItem(CURRENT_WORK_TOPIC_KEY);
 
-      // ----------------------------------------------------
-      // 今回のワークで使用する「お題情報」を sessionStorage に保存
-      // ----------------------------------------------------
-      const workTopicData = {
-        topic_id: createdTopicId,
-        class_id: classId,
-        genre_id: genreId,
-        genre_name: selectedGenre,
-        topic_content: topicText,
-        created_at: createdRecord?.created_at || new Date().toISOString(),
-      };
-
-      sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(workTopicData));
-
-      console.log('作成・保持されたお題データ:', workTopicData);
       setIsModalOpen(false);
 
-      // クエリパラメータで mode=topic_cushion を渡して遷移する
+      // クエリパラメータで mode=topic_cushion を渡して待機画面に遷移
       router.push('/wait?mode=topic_cushion');
     } catch (err: any) {
       console.error('送信処理中に例外が発生しました:', err);
@@ -206,7 +190,7 @@ export default function SetTopicPage() {
 
   return (
     <div className="topic-container">
-      {/* 画面ヘッダー: 「◀ もどる」ボタン と 中央タイトル「お題設定」 */}
+      {/* 画面ヘッダー */}
       <header className="topic-header">
         <button
           type="button"
@@ -220,9 +204,9 @@ export default function SetTopicPage() {
         <h1 className="topic-title">お題設定</h1>
       </header>
 
-      {/* メインレイアウト（左: ジャンル切替 / 右: 入力・選択エリア・確定ボタン） */}
+      {/* メインレイアウト */}
       <div className="topic-content-wrapper">
-        {/* 左側: 縦並びのジャンル選択ボタン群 */}
+        {/* 左側: ジャンル選択ボタン群 */}
         <div className="genre-button-group">
           {GENRES.map((genre) => {
             const isSelected = genre === selectedGenre;
@@ -239,16 +223,14 @@ export default function SetTopicPage() {
           })}
         </div>
 
-        {/* 右側: テキストボックス + セレクトボックス + 確定ボタン */}
+        {/* 右側: テキストエリア ＋ ドロップダウン ＋ 確定ボタン */}
         <div className="topic-input-section">
-          {/* 上: お題表示・編集テキストエリア */}
           <div className="input-block">
             <label className="input-label">お題テキスト</label>
             <textarea
               value={topicText}
               onChange={(e) => {
                 setTopicText(e.target.value);
-                // 直接編集された場合はテンプレート選択状態を解除
                 if (selectedTemplate && e.target.value !== selectedTemplate.template_topic_content) {
                   setSelectedTemplate(null);
                 }
@@ -258,11 +240,9 @@ export default function SetTopicPage() {
             />
           </div>
 
-          {/* 中: カスタムドロップダウン (下向き固定・最大高さ指定・大きな▼矢印) */}
           <div className="input-block">
             <label className="input-label">【{selectedGenre}】のテンプレートお題</label>
             <div className="custom-dropdown-container" ref={dropdownRef}>
-              {/* トリガー表示枠 */}
               <button
                 type="button"
                 className={`custom-dropdown-trigger ${isDropdownOpen ? 'open' : ''}`}
@@ -276,11 +256,9 @@ export default function SetTopicPage() {
                     ? selectedTemplate.template_topic_content
                     : SELECT_PLACEHOLDER}
                 </span>
-                {/* 大きな▼矢印 */}
                 <span className="dropdown-big-arrow">▼</span>
               </button>
 
-              {/* 必ず下側に展開するリストメニュー */}
               {isDropdownOpen && (
                 <ul className="custom-dropdown-menu">
                   {templates.length === 0 ? (
@@ -305,7 +283,6 @@ export default function SetTopicPage() {
             </div>
           </div>
 
-          {/* 右下: 確定ボタン */}
           <div className="topic-footer">
             <Button onClick={handleOpenConfirmModal} className="topic-confirm-button">
               確定
