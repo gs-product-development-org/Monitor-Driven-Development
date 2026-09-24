@@ -11,7 +11,7 @@ import './login.css';
 interface AuthUserResponse {
   user_id: number;
   user_number: number;
-  role: boolean; // false: 教師, true: 児童
+  role: 'teacher' | 'student';
   class_id: number;
   class_name: string;
 }
@@ -78,7 +78,7 @@ export default function LoginPage() {
         user_number: user.user_number, // ★ 追加: useUserStore で必須となっているプロパティ
         class_id: String(user.class_id),
         student_id: String(user.user_number),
-        role: user.role === false ? ('teacher' as const) : ('student' as const),
+        role: user.role,
       };
 
       setUser(formattedUserForStore);
