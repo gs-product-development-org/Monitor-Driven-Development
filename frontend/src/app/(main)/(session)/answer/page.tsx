@@ -3,50 +3,80 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { supabase } from '@/lib/supabase';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './answer.css';
+
+// SetTopicPage で定義した sessionStorage のキー名
+const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
 
 type StockTopic = {
   id: string;
   text: string;
 };
 
-type Genre = '日常' | '好きなもの' | '雑学' | 'おもしろ' | '授業';
 type ActionType = 'chest' | 'announce';
 
 export default function TopicStockPage() {
   const router = useRouter();
+  const { user } = useRequireAuth(); // ユーザー情報の取得
 
   const [step, setStep] = useState<'input' | 'action'>('input');
-  const [selectedGenre] = useState<Genre>('日常');
+  
+  // sessionStorage から復元するお題データ用 State
+  const [currentTopicInfo, setCurrentTopicInfo] = useState<{
+    topic_id: number | null;
+    class_id: number | null;
+    genre_name: string;
+    topic_content: string;
+  }>({
+    topic_id: null,
+    class_id: null,
+    genre_name: 'お題',
+    topic_content: '',
+  });
+
   const [stockList, setStockList] = useState<StockTopic[]>([]);
   const [inputText, setInputText] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
-  // --- モーダル管理用 State ---
-  // フェーズ1の確定用モーダル
+  // 送信処理中フラグ
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // モーダル管理用 State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  // フェーズ2のアクション確認用モーダル ('chest' | 'announce' | null)
   const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
 
-  // --- スクロール検知用 ---
+  // スクロール検知用 Ref & State
   const chatAreaRef = useRef<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState<boolean>(false);
 
-  // スクロール可能か＆最下部までスクロールしていないかを判定する関数
+  // 初期化：sessionStorage からお題データを取り出す
+  useEffect(() => {
+    const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setCurrentTopicInfo({
+          topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
+          class_id: parsed.class_id ? Number(parsed.class_id) : null,
+          genre_name: parsed.genre_name || 'お題',
+          topic_content: parsed.topic_content || '',
+        });
+      } catch (e) {
+        console.error('sessionStorage の読み込みに失敗しました:', e);
+      }
+    }
+  }, []);
+
   const checkScrollable = () => {
     const el = chatAreaRef.current;
     if (!el) return;
-
-    // コンテンツの高さが要素の高さを超えているか
     const hasScroll = el.scrollHeight > el.clientHeight;
-    // 最下部に到達しているかどうか (誤差を吸収するため - 5px)
     const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
-
-    // スクロール可能かつ、まだ最下部までスクロールしていない場合に表示
     setCanScroll(hasScroll && !isAtBottom);
   };
 
-  // お題リストが更新された際、または画面サイズ変更時に判定
   useEffect(() => {
     checkScrollable();
     window.addEventListener('resize', checkScrollable);
@@ -56,7 +86,7 @@ export default function TopicStockPage() {
   const handleAddStock = () => {
     const trimmed = inputText.trim();
     if (!trimmed) {
-      alert('お題を入力してください');
+      alert('回答を入力してください');
       return;
     }
 
@@ -67,51 +97,92 @@ export default function TopicStockPage() {
     setInputText('');
   };
 
-  // フェーズ1の「確定」ボタン押下時: モーダルを開く
+  // フェーズ1の「確定」ボタン押下時
   const handleFirstConfirm = () => {
     if (!selectedTopicId) return;
     setIsModalOpen(true);
   };
 
-  // フェーズ1モーダルの「これにする」ボタン押下時: モーダルを閉じてフェーズ2へ遷移
+  // フェーズ1モーダルの「これにする」ボタン押下時
   const handlePhase1ModalSubmit = () => {
     setIsModalOpen(false);
     setStep('action');
   };
 
-  // フェーズ2のボタン選択時: モーダルを表示
+  // フェーズ2のボタン選択時
   const handleActionSelect = (action: ActionType) => {
     setPendingAction(action);
   };
 
-  // フェーズ2モーダルの「保存する/始める」ボタン押下時: 最終確定処理
-  const handleActionModalSubmit = () => {
+  // ★最終確定処理（Supabase RPC create_post を 1回呼び出し）
+  const handleActionModalSubmit = async () => {
     const selectedTopic = stockList.find((item) => item.id === selectedTopicId);
-    if (!selectedTopic || !pendingAction) return;
+    if (!selectedTopic || !pendingAction || isSubmitting) return;
 
-    console.log('最終確定結果:', {
-      genre: selectedGenre,
-      topic: selectedTopic.text,
-      action: pendingAction,
-    });
+    setIsSubmitting(true);
 
-    if (pendingAction === 'chest') {
-      // 宝箱に保存する場合の追加処理があればここに記述
-    } else if (pendingAction === 'announce') {
-      // 発表（ワーク開始）する場合の追加処理があればここに記述
+    try {
+      // ユーザーID と クラスID の取得
+      let userId: number | null = (user as any)?.user_id ? Number((user as any).user_id) : null;
+      let classId: number | null = currentTopicInfo.class_id ?? ((user as any)?.class_id ? Number((user as any).class_id) : null);
+
+      // バックアップ取得 (Supabase Session)
+      if (!userId || !classId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const sessionUser = sessionData?.session?.user;
+        if (sessionUser) {
+          if (!userId) userId = Number(sessionUser.user_metadata?.user_id || sessionUser.id);
+          if (!classId) classId = Number(sessionUser.user_metadata?.class_id);
+        }
+      }
+
+      if (!userId || !classId) {
+        alert('ユーザー情報またはクラス情報が取得できませんでした。再ログインしてください。');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const isPosted = pendingAction === 'announce'; // announce なら true, chest なら false
+
+      // 統合された RPC `create_post` を実行
+      const { data, error } = await supabase.rpc('create_post', {
+        p_class_id: classId,
+        p_user_id: userId,
+        p_topic_id: currentTopicInfo.topic_id,
+        p_post_content: selectedTopic.text,
+        p_is_posted: isPosted,
+      });
+
+      if (error) {
+        console.error('投稿の保存エラー:', error);
+        alert(`回答の保存に失敗しました: ${error.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      console.log('投稿完了:', data);
+      setPendingAction(null);
+
+      // 待機画面へ移動
+      router.push('/wait');
+    } catch (err) {
+      console.error('処理例外エラー:', err);
+      alert('予期せぬエラーが発生しました');
+      setIsSubmitting(false);
     }
-
-    setPendingAction(null);
-    router.push('/wait');
   };
 
   const currentSelectedTopic = stockList.find((item) => item.id === selectedTopicId);
 
   return (
     <div className="stock-container">
-      {/* 上部: 常に表示されるジャンル名 */}
+      {/* 上部: お題テキスト / ジャンル名表示 */}
       <div className="stock-main-topic">
-        <h1 className="stock-topic-title">{selectedGenre}</h1>
+        <h1 className="stock-topic-title">
+          {currentTopicInfo.topic_content
+            ? `【${currentTopicInfo.genre_name}】${currentTopicInfo.topic_content}`
+            : currentTopicInfo.genre_name}
+        </h1>
       </div>
 
       {/* ================= フェーズ 1: 書き溜め・選択 ================= */}
@@ -221,6 +292,7 @@ export default function TopicStockPage() {
               type="button"
               className="action-toggle-btn"
               onClick={() => handleActionSelect('chest')}
+              disabled={isSubmitting}
             >
               宝箱にしまう
             </button>
@@ -228,6 +300,7 @@ export default function TopicStockPage() {
               type="button"
               className="action-toggle-btn action-toggle-btn-primary"
               onClick={() => handleActionSelect('announce')}
+              disabled={isSubmitting}
             >
               公開する
             </button>
@@ -253,7 +326,8 @@ export default function TopicStockPage() {
                       この回答を公開しますか？<br />
                       誰が公開したかはわからないよ
                     </>
-                  )}
+                  )
+                }
                 </p>
 
                 <div className="modal-buttons-row">
@@ -261,6 +335,7 @@ export default function TopicStockPage() {
                     type="button"
                     onClick={() => setPendingAction(null)}
                     className="modal-btn modal-btn-cancel"
+                    disabled={isSubmitting}
                   >
                     いいえ
                   </button>
@@ -268,8 +343,13 @@ export default function TopicStockPage() {
                     type="button"
                     onClick={handleActionModalSubmit}
                     className="modal-btn modal-btn-confirm"
+                    disabled={isSubmitting}
                   >
-                    {pendingAction === 'chest' ? 'しまう' : '公開する'}
+                    {isSubmitting
+                      ? '保存中...'
+                      : pendingAction === 'chest'
+                      ? 'しまう'
+                      : '公開する'}
                   </button>
                 </div>
               </div>

@@ -45,7 +45,7 @@ export default function LoginPage() {
       }
 
       // 2. Supabase の RPC (auth_student) を呼び出し
-      const { data, error } = await supabase.rpc('authenticate_student', {
+      const { data, error } = await supabase.rpc('auth_student', {
         p_class_id: parsedClassId,
         p_user_number: parsedUserNumber,
         p_password: password,
@@ -74,7 +74,8 @@ export default function LoginPage() {
 
       // ★ useUserStore が求める型に変換するオブジェクトを作成
       const formattedUserForStore = {
-        user_id: user.user_id, // ★ 追加: ユーザー識別ID
+        user_id: user.user_id,
+        user_number: user.user_number, // ★ 追加: useUserStore で必須となっているプロパティ
         class_id: String(user.class_id),
         student_id: String(user.user_number),
         role: user.role === false ? ('teacher' as const) : ('student' as const),

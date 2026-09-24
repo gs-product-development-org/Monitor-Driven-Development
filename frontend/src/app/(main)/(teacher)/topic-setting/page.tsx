@@ -3,63 +3,40 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
+import { supabase } from '@/lib/supabase';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './topic-setting.css';
 
-type Genre = '学校' | '日常' | '趣味' | '雑学' | 'おもしろ';
+// ジャンル型定義
+type Genre = '学校' | '日常' | '好きなもの' | '雑談' | 'ユニーク';
 
-const GENRES: Genre[] = ['学校', '日常', '趣味', '雑学', 'おもしろ'];
+// ジャンル名と genre_id のマッピング表
+const GENRE_MAP: Record<Genre, number> = {
+  学校: 1,
+  日常: 2,
+  好きなもの: 3,
+  雑談: 4,
+  ユニーク: 5,
+};
 
-const TEMPLATE_DATABASE: Record<Genre, string[]> = {
-  学校: [
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-    '今日の授業で一番なるほどと思ったことは？',
-    'グループワークで工夫したポイントは？',
-    '今回の単元で一番難しかった部分は？',
-  ],
-  日常: [
-    '今日のご飯で一番おいしかったものは？',
-    '朝起きて最初にすることは？',
-    '今一番行きたい場所はどこ？',
-  ],
-  趣味: [
-    '一番好きな動物とその理由は？',
-    '最近ハマっているアニメやゲームは？',
-    '休みの日に一番やりたいことは？',
-  ],
-  雑学: [
-    '人に教えたくなる豆知識をひとつ教えて！',
-    '世界で一番広い海の名前は？',
-    '地球上に存在する一番大きい生き物は？',
-  ],
-  おもしろ: [
-    'もし無人島に一つだけ持っていくなら？',
-    '1日だけ透明人間になれたら何をする？',
-    'もし超能力が一つ手に入るなら何がいい？',
-  ],
+const GENRES: Genre[] = ['学校', '日常', '好きなもの', '雑談', 'ユニーク'];
+
+// DBから取得するテンプレートの型定義
+type TemplateTopic = {
+  template_topic_id: number;
+  genre_id: number;
+  template_topic_content: string;
 };
 
 // セレクトボックスのデフォルト説明用テキスト
 const SELECT_PLACEHOLDER = '選択すると上のお題に反映されます';
 
+// sessionStorage 保存用キー名定数
+export const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
+
 export default function SetTopicPage() {
   const router = useRouter();
+  const { user } = useRequireAuth(); // ユーザー情報取得フック
 
   // ジャンル選択 State
   const [selectedGenre, setSelectedGenre] = useState<Genre>('学校');
@@ -67,8 +44,15 @@ export default function SetTopicPage() {
   // テキストボックスの入力値 State（初期状態は空）
   const [topicText, setTopicText] = useState<string>('');
 
-  // セレクトボックスの選択値 State
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  // 選択されたテンプレートオブジェクト State (ID保持用)
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateTopic | null>(null);
+
+  // DBから取得したテンプレートリスト State
+  const [templates, setTemplates] = useState<TemplateTopic[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState<boolean>(false);
+
+  // 送信処理中のローディング State
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // ドロップダウンの開閉 State
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
@@ -78,6 +62,33 @@ export default function SetTopicPage() {
 
   // ドロップダウン外側のクリック検知用Ref
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 1. ジャンル変更時にDBからテンプレート一覧を取得
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      setLoadingTemplates(true);
+      try {
+        const genreId = GENRE_MAP[selectedGenre];
+        const { data, error } = await supabase.rpc('get_templates', {
+          p_genre_id: genreId,
+        });
+
+        if (error) {
+          console.error('テンプレートの取得に失敗しました:', error);
+          setTemplates([]);
+        } else {
+          setTemplates(data || []);
+        }
+      } catch (err) {
+        console.error('エラーが発生しました:', err);
+        setTemplates([]);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    fetchTemplates();
+  }, [selectedGenre]);
 
   // 外側クリックでドロップダウンを閉じる処理
   useEffect(() => {
@@ -90,21 +101,22 @@ export default function SetTopicPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 1. 左側ジャンルボタン切替処理
+  // 2. 左側ジャンルボタン切替処理
   const handleGenreSelect = (genre: Genre) => {
     setSelectedGenre(genre);
-    setSelectedTemplate('');
+    setSelectedTemplate(null);
+    setTopicText('');
     setIsDropdownOpen(false);
   };
 
-  // 2. カスタムテンプレート選択処理
-  const handleTemplateSelect = (item: string) => {
+  // 3. カスタムテンプレート選択処理
+  const handleTemplateSelect = (item: TemplateTopic) => {
     setSelectedTemplate(item);
-    setTopicText(item); // お題テキストに反映
+    setTopicText(item.template_topic_content); // お題テキストに反映
     setIsDropdownOpen(false); // ドロップダウンを閉じる
   };
 
-  // 3. 確定ボタンクリック (モーダル開く)
+  // 4. 確定ボタンクリック (モーダル開く)
   const handleOpenConfirmModal = () => {
     if (!topicText.trim()) {
       alert('お題を入力または選択してください');
@@ -113,16 +125,83 @@ export default function SetTopicPage() {
     setIsModalOpen(true);
   };
 
-  // 4. モーダル内「はい」ボタンクリック処理
-  const handleModalSubmit = () => {
-    console.log('設定されたお題:', {
-      genre: selectedGenre,
-      topic: topicText,
-    });
-    setIsModalOpen(false);
+  // 5. モーダル内「始める」ボタンクリック処理（DB登録 ＋ sessionStorage保存）
+  const handleModalSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    // クエリパラメータで mode=topic_cushion を渡して遷移する
-    router.push('/wait?mode=topic_cushion');
+    try {
+      // ユーザーの class_id を取得
+      let classId: number | null = null;
+      if (user) {
+        classId = Number((user as any)?.class_id);
+      }
+
+      // Supabaseセッションからのバックアップ取得
+      if (!classId || isNaN(classId)) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const sessionUser = sessionData?.session?.user;
+        if (sessionUser) {
+          classId = Number(sessionUser.user_metadata?.class_id);
+        }
+      }
+
+      if (!classId || isNaN(classId)) {
+        alert('所属クラスの情報が見つかりません。再ログインしてください。');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const genreId = GENRE_MAP[selectedGenre];
+      // 選択したテンプレートテキストと入力値が一致している場合のみ template_topic_id を送信
+      const templateTopicId =
+        selectedTemplate && selectedTemplate.template_topic_content === topicText
+          ? selectedTemplate.template_topic_id
+          : null;
+
+      // Supabase RPC関数 `create_topic` の呼び出し
+      const { data, error } = await supabase.rpc('create_topic', {
+        p_class_id: classId,
+        p_genre_id: genreId,
+        p_topic_content: topicText,
+        p_template_topic_id: templateTopicId,
+      });
+
+      if (error) {
+        console.error('お題の登録エラー:', error);
+        alert(`お題の作成に失敗しました: ${error.message}`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // DBから返却されたレスポンスデータを取得
+      const createdRecord = Array.isArray(data) ? data[0] : data;
+      const createdTopicId = createdRecord?.topic_id ?? null;
+
+      // ----------------------------------------------------
+      // 今回のワークで使用する「お題情報」を sessionStorage に保存
+      // ----------------------------------------------------
+      const workTopicData = {
+        topic_id: createdTopicId,
+        class_id: classId,
+        genre_id: genreId,
+        genre_name: selectedGenre,
+        topic_content: topicText,
+        created_at: createdRecord?.created_at || new Date().toISOString(),
+      };
+
+      sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(workTopicData));
+
+      console.log('作成・保持されたお題データ:', workTopicData);
+      setIsModalOpen(false);
+
+      // クエリパラメータで mode=topic_cushion を渡して遷移する
+      router.push('/wait?mode=topic_cushion');
+    } catch (err: any) {
+      console.error('送信処理中に例外が発生しました:', err);
+      alert('予期せぬエラーが発生しました');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -167,7 +246,13 @@ export default function SetTopicPage() {
             <label className="input-label">お題テキスト</label>
             <textarea
               value={topicText}
-              onChange={(e) => setTopicText(e.target.value)}
+              onChange={(e) => {
+                setTopicText(e.target.value);
+                // 直接編集された場合はテンプレート選択状態を解除
+                if (selectedTemplate && e.target.value !== selectedTemplate.template_topic_content) {
+                  setSelectedTemplate(null);
+                }
+              }}
               placeholder="お題を自由に入力するか、下のテンプレートから選択してください..."
               className="topic-custom-textarea"
             />
@@ -182,9 +267,14 @@ export default function SetTopicPage() {
                 type="button"
                 className={`custom-dropdown-trigger ${isDropdownOpen ? 'open' : ''}`}
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                disabled={loadingTemplates}
               >
                 <span className={`trigger-text ${!selectedTemplate ? 'placeholder' : ''}`}>
-                  {selectedTemplate || SELECT_PLACEHOLDER}
+                  {loadingTemplates
+                    ? '読み込み中...'
+                    : selectedTemplate
+                    ? selectedTemplate.template_topic_content
+                    : SELECT_PLACEHOLDER}
                 </span>
                 {/* 大きな▼矢印 */}
                 <span className="dropdown-big-arrow">▼</span>
@@ -193,15 +283,23 @@ export default function SetTopicPage() {
               {/* 必ず下側に展開するリストメニュー */}
               {isDropdownOpen && (
                 <ul className="custom-dropdown-menu">
-                  {TEMPLATE_DATABASE[selectedGenre].map((item, index) => (
-                    <li
-                      key={index}
-                      className={`dropdown-option ${selectedTemplate === item ? 'selected' : ''}`}
-                      onClick={() => handleTemplateSelect(item)}
-                    >
-                      {item}
+                  {templates.length === 0 ? (
+                    <li className="dropdown-option" style={{ color: '#888', cursor: 'default' }}>
+                      テンプレートがありません
                     </li>
-                  ))}
+                  ) : (
+                    templates.map((item) => (
+                      <li
+                        key={item.template_topic_id}
+                        className={`dropdown-option ${
+                          selectedTemplate?.template_topic_id === item.template_topic_id ? 'selected' : ''
+                        }`}
+                        onClick={() => handleTemplateSelect(item)}
+                      >
+                        {item.template_topic_content}
+                      </li>
+                    ))
+                  )}
                 </ul>
               )}
             </div>
@@ -216,42 +314,41 @@ export default function SetTopicPage() {
         </div>
       </div>
 
-    {/* モーダルダイアログ */}
-    {isModalOpen && (
-      <div className="modal-overlay">
-        <div className="modal-card">
-          <p className="modal-message">
-            お題
-          </p>
-          <p className="modal-message-topic">
-            「<span className="modal-topic-highlight">{topicText}</span>」
-          </p>
+      {/* モーダルダイアログ */}
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <p className="modal-message">お題</p>
+            <p className="modal-message-topic">
+              「<span className="modal-topic-highlight">{topicText}</span>」
+            </p>
 
-          {/* 追加：説明文 */}
-          <p className="modal-subtext">
-            「始める」を押すと、児童全員とあなたの端末で<br />
-            このお題でのワークがスタートします。
-          </p>
+            <p className="modal-subtext">
+              「始める」を押すと、児童全員とあなたの端末で<br />
+              このお題でのワークがスタートします。
+            </p>
 
-          <div className="modal-buttons-row">
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(false)}
-              className="modal-btn modal-btn-cancel"
-            >
-              いいえ
-            </button>
-            <button
-              type="button"
-              onClick={handleModalSubmit}
-              className="modal-btn modal-btn-confirm"
-            >
-              始める
-            </button>
+            <div className="modal-buttons-row">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="modal-btn modal-btn-cancel"
+                disabled={isSubmitting}
+              >
+                いいえ
+              </button>
+              <button
+                type="button"
+                onClick={handleModalSubmit}
+                className="modal-btn modal-btn-confirm"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? '処理中...' : '始める'}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 }
