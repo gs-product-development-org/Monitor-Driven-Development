@@ -35,11 +35,11 @@ type PendingPlacement = {
 
 // 5つのエリア定義（領域画像と数値IDの紐付け）
 const ZOO_AREAS: ZooArea[] = [
-  { id: 'area-1', numericId: 1, name: '熱帯', image: '/images/areas/熱帯.png' },
-  { id: 'area-2', numericId: 2, name: '氷', image: '/images/areas/氷.png' },
-  { id: 'area-3', numericId: 3, name: '水辺', image: '/images/areas/水辺.png' },
-  { id: 'area-4', numericId: 4, name: '砂漠', image: '/images/areas/砂漠.png' },
-  { id: 'area-5', numericId: 5, name: '草原', image: '/images/areas/草原.png' },
+  { id: 'area-1', numericId: 1, name: '氷', image: '/images/areas/氷.png' },
+  { id: 'area-2', numericId: 2, name: '砂漠', image: '/images/areas/砂漠.png' },
+  { id: 'area-3', numericId: 3, name: '熱帯', image: '/images/areas/熱帯.png' },
+  { id: 'area-4', numericId: 4, name: '草原', image: '/images/areas/草原.png' },
+  { id: 'area-5', numericId: 5, name: '水辺', image: '/images/areas/水辺.png' },
 ];
 
 // ガチャセッション未存在時のフォールバック用ダミーデータ

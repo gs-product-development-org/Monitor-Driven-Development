@@ -282,12 +282,14 @@
 
 /* 配置される動物画像スタイルの定義 */
 .placed-animal-wrapper {
-  pointer-events: none; /* UIのクリック操作を妨げない設定 */
+  pointer-events: none;
+  /* UIのクリック操作を妨げない設定 */
   z-index: 10;
 }
 
 .placed-animal-img {
-  width: 80px; /* 必要に応じてサイズを調整してください */
+  width: 120px;
+  /* 必要に応じてサイズを調整してください */
   height: auto;
   display: block;
 }
