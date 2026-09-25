@@ -15,7 +15,7 @@ export default function ZooHomePage() {
   const setUser = useUserStore((state: UserState) => state.setUser);
   const clearUser = useUserStore((state: UserState) => state.clearUser);
 
-  // ページリロード時に localStorage からユーザー情報を復元
+  // 1. ページリロード時に sessionStorage からユーザー情報を復元
   useEffect(() => {
     if (!user) {
       const savedUser = sessionStorage.getItem('user_info');
@@ -28,8 +28,51 @@ export default function ZooHomePage() {
     }
   }, [user, setUser, router]);
 
-  // ★ 教員かどうか判定（role === false が教師）
+  // ★ 教員かどうか判定
   const isTeacher = user?.role === 'teacher';
+
+  // 2. 生徒端末のみ: 先生側で新しいお題（topics）が追加されたかをリアルタイム監視
+  useEffect(() => {
+    // ユーザー情報がない、または教員の場合は生徒用リアルタイム監視を行わない
+    if (!user || isTeacher) return;
+
+    // 所属クラスIDを取得
+    const classId = user.class_id;
+    if (!classId) return;
+
+    // Supabase Realtime チャンネルの設定
+    const channel = supabase
+      .channel(`topic-watch-class-${classId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'topics',                     // DBのお題テーブル
+          filter: `class_id=eq.${classId}`,    // 自クラスのINSERTのみフィルタリング
+        },
+        (payload) => {
+          // 万が一のための二重チェック（型を揃えて比較）
+          if (Number(payload.new.class_id) === Number(classId)) {
+            console.log('自クラスのお題追加を検知しました:', payload.new);
+            
+            // 生徒側画面を自動的に /wait?mode=topic_cushion に遷移させる
+            router.push('/wait?mode=topic_cushion');
+          }
+        }
+      )
+      
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`生徒: クラスID ${classId} のお題追加監視を開始しました`);
+        }
+      });
+
+    // コンポーネント破棄時にリアルタイムリスナーを解約
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, isTeacher, router]);
 
   // ログアウト処理
   const handleLogout = () => {
