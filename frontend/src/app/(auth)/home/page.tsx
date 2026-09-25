@@ -28,7 +28,7 @@ export default function ZooHomePage() {
     }
   }, [user, setUser, router]);
 
-  // ★ 教員かどうか判定（role === false が教師、または role 記述に対応）
+  // ★ 教員かどうか判定
   const isTeacher = user?.role === 'teacher';
 
   // 2. 生徒端末のみ: 先生側で新しいお題（topics）が追加されたかをリアルタイム監視
