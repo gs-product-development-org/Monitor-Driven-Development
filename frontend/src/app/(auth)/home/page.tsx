@@ -396,6 +396,15 @@ export default function ZooHomePage() {
         )}
       </div>
 
+      {/* 画面中央下: お題を決めるボタン（教員のみ） */}
+      {isTeacher && (
+        <div className="bottom-center-area">
+          <Button onClick={handleSetTopic} className="topic-btn-teacher">
+            お題を決める
+          </Button>
+        </div>
+      )}
+
       {/* 画面最下部: 宝箱・称号を見るボタン */}
       <div className="bottom-bar">
         <div className="bottom-left-area">
