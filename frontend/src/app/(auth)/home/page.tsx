@@ -238,7 +238,7 @@ export default function ZooHomePage() {
       <div className="zoo-scroll-content">
 
         {/* ★ デバッグ表示: zoo_areas の設定範囲（赤枠 & ラベル） */}
-        {showDebugOverlay &&
+        {/* {showDebugOverlay &&
           debugAreas.map((area) => {
             const left = (area.min_x / MAP_WIDTH) * 100;
             const top = (area.min_y / MAP_HEIGHT) * 100;
@@ -270,7 +270,7 @@ export default function ZooHomePage() {
                 <div>Y: {area.min_y} ~ {area.max_y}</div>
               </div>
             );
-          })}
+          })} */}
 
         {/* 動物の一覧をプロット */}
         {placedAnimals.map((animal) => {
@@ -280,7 +280,7 @@ export default function ZooHomePage() {
           return (
             <React.Fragment key={animal.placement_id}>
               {/* ★ デバッグ表示: 動物の正確な座標点 (青い点) */}
-              {showDebugOverlay && (
+              {/* {showDebugOverlay && (
                 <div
                   style={{
                     position: 'absolute',
@@ -295,7 +295,7 @@ export default function ZooHomePage() {
                     pointerEvents: 'none',
                   }}
                 />
-              )}
+              )} */}
 
               {/* 動物画像 */}
               <div
