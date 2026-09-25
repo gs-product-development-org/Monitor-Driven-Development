@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase'; // ご自身のSupabaseクライアントのパスに合わせて指定してください
+import { supabase } from '@/lib/supabase';
+import { useSaveZooPlacement } from '@/hooks/useZooPlacement';
 import { GACHA_RESULT_ITEMS_KEY } from '../gacha/page';
 import './placement.css';
 
@@ -25,6 +26,13 @@ type ItemToPlace = {
   class_id?: number; // クラスIDが必要な場合
 };
 
+// 選択した配置情報の記録用型
+type PendingPlacement = {
+  itemId: number;
+  areaId: number;
+  classId: number;
+};
+
 // 5つのエリア定義（領域画像と数値IDの紐付け）
 const ZOO_AREAS: ZooArea[] = [
   { id: 'area-1', numericId: 1, name: '熱帯', image: '/images/areas/熱帯.png' },
@@ -43,6 +51,9 @@ const FALLBACK_ITEMS: ItemToPlace[] = [
 
 export default function PlaceAnimalPage() {
   const router = useRouter();
+
+  // カスタムフックをコンポーネント最上位で呼び出す
+  const { savePlacement, loading: isSaving } = useSaveZooPlacement();
 
   // ガチャ画面で獲得したアイテム一覧の取得
   const [itemsToPlace, setItemsToPlace] = useState<ItemToPlace[]>([]);
@@ -84,7 +95,7 @@ export default function PlaceAnimalPage() {
 
   // OKボタン押下処理 (DBインサート呼び出し)
   const handleConfirm = async () => {
-    if (!selectedAreaId || !currentItem || isSubmitting) return;
+    if (!selectedAreaId || !currentItem || isSubmitting || isSaving) return;
 
     // 選択されたエリアの数値IDを取得
     const selectedArea = ZOO_AREAS.find((area) => area.id === selectedAreaId);
@@ -99,15 +110,29 @@ export default function PlaceAnimalPage() {
     setIsSubmitting(true);
 
     try {
-      // Postgres関数 'place_animal' をRPC経由で実行
-      const { data, error } = await supabase.rpc('place_animal', {
-        p_item_id: p_item_id,
-        p_area_id: p_area_id,
-        p_class_id: p_class_id,
+      // // Postgres関数 'place_animal' をRPC経由で実行
+      // const { data, error } = await supabase.rpc('place_animal', {
+      //   p_item_id: p_item_id,
+      //   p_area_id: p_area_id,
+      //   p_class_id: p_class_id,
+      // });
+
+      // if (error) {
+      //   console.error('配置データの保存に失敗しました:', error);
+      //   alert('配置の保存に失敗しました。もう一度お試しください。');
+      //   setIsSubmitting(false);
+      //   return;
+      // }
+
+      // ★ supabase.rpc の代わりにカスタムフックを実行
+      const data = await savePlacement({
+        itemId: p_item_id,
+        areaId: p_area_id,
+        classId: p_class_id,
       });
 
-      if (error) {
-        console.error('配置データの保存に失敗しました:', error);
+      if (!data) {
+        console.error('配置データの保存に失敗しました');
         alert('配置の保存に失敗しました。もう一度お試しください。');
         setIsSubmitting(false);
         return;
