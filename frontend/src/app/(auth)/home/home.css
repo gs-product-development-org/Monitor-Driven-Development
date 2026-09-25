@@ -12,7 +12,6 @@
 /* 縦2画面分 (200vh) のスクロール用背景コンテンツ */
 .zoo-scroll-content {
   position: relative;
-
   width: 100%;
   height: 200vh;
   background-image: url('/images/contents/zoo.gif');
@@ -21,7 +20,7 @@
   background-repeat: no-repeat;
 }
 
-/* 画面中央上部：スクロール誘導インジケーター（画面固定） */
+/* スクロール誘導インジケーター */
 .scroll-hint-banner {
   position: fixed;
   top: 20px;
@@ -40,12 +39,9 @@
 }
 
 @keyframes floatUp {
-
-  0%,
-  100% {
+  0%, 100% {
     transform: translateX(-50%) translateY(0);
   }
-
   50% {
     transform: translateX(-50%) translateY(-8px);
   }
@@ -74,6 +70,70 @@
   z-index: 10;
 }
 
+/* --- カスタムガチャメーターUI (ホーム画面用) --- */
+.gacha-meter-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 10px 18px;
+  border-radius: 40px;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.gacha-meter-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #FF4A70;
+  white-space: nowrap;
+}
+
+.gacha-meter-bar-outer {
+  width: 160px;
+  height: 20px;
+  background-color: #E2E8F0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #CBD5E1;
+  position: relative;
+}
+
+.gacha-meter-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #FF9A8B 0%, #FF6A88 55%, #FF99AC 100%);
+  border-radius: 8px;
+  transition: width 0.5s ease-in-out;
+}
+
+.gacha-meter-eggs {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+}
+
+.gacha-egg-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.gacha-egg-icon.active {
+  opacity: 1;
+  filter: drop-shadow(0 2px 4px rgba(255, 100, 141, 0.4));
+}
+
+.gacha-egg-icon.inactive {
+  opacity: 0.3;
+  filter: grayscale(80%);
+}
+
 /* 中央下: お題を決めるボタン */
 .bottom-center-area {
   position: fixed;
@@ -94,27 +154,12 @@
   justify-content: center;
   gap: 100px;
   pointer-events: none;
-  /* 余白をクリック透過 */
   z-index: 10;
 }
 
 .bottom-left-area,
 .bottom-right-area {
   pointer-events: auto;
-  /* ボタン本体はクリック可能に */
-}
-
-/* --- 各種パーツのスタイル --- */
-.banner-wrapper {
-  width: 320px;
-  height: auto;
-}
-
-.common-banner-img {
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: contain;
 }
 
 .teacher-actions-column {
@@ -280,16 +325,13 @@
   transform: translateY(-2px) scale(1.02);
 }
 
-/* 配置される動物画像スタイルの定義 */
 .placed-animal-wrapper {
   pointer-events: none;
-  /* UIのクリック操作を妨げない設定 */
   z-index: 10;
 }
 
 .placed-animal-img {
   width: 120px;
-  /* 必要に応じてサイズを調整してください */
   height: auto;
   display: block;
 }
