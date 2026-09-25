@@ -13,6 +13,14 @@ type TitleData = {
   image?: string;
 };
 
+// 初回・未取得時のデフォルトデータ
+const DEFAULT_TITLE: TitleData = {
+  title_id: 0,
+  title_name: 'まだないよ',
+  title_detail: '意見を公開して称号をゲットしよう！',
+  image: '/images/animals/non_animal.png',
+};
+
 export default function TitleDetailPage() {
   const router = useRouter();
   const { user } = useRequireAuth();
@@ -32,8 +40,13 @@ export default function TitleDetailPage() {
         const classId = Number((user as any)?.class_id);
         const userNumber = Number((user as any)?.user_number || (user as any)?.student_id || (user as any)?.user_id);
 
+        // if (isNaN(classId) || isNaN(userNumber)) {
+        //   throw new Error('称号はまだないよ');
+        // }
+
         if (isNaN(classId) || isNaN(userNumber)) {
-          throw new Error('称号はまだないよ');
+          setTitleData(DEFAULT_TITLE);
+          return;
         }
 
         const { data, error: rpcError } = await supabase.rpc('get_title', {
@@ -41,11 +54,10 @@ export default function TitleDetailPage() {
           p_user_number: userNumber,
         });
 
-        if (rpcError) {
-          throw new Error('称号はまだないよ');
-        }
-
-        if (data && data.length > 0) {
+        if (rpcError || !data || data.length === 0) {
+          // データがない・エラー時はデフォルト（はてな画像）を表示
+          setTitleData(DEFAULT_TITLE);
+        } else {
           const result = data[0];
           setTitleData({
             title_id: Number(result.title_id),
@@ -53,11 +65,10 @@ export default function TitleDetailPage() {
             title_detail: result.title_detail || '',
             image: `/images/animals/title-${result.title_id}.png`,
           });
-        } else {
-          setError('称号はまだないよ');
         }
-      } catch (err: any) {
-        setError('称号はまだないよ');
+      } catch (err) {
+        // 例外発生時もデフォルトを表示
+        setTitleData(DEFAULT_TITLE);
       } finally {
         setLoading(false);
       }
@@ -74,27 +85,30 @@ export default function TitleDetailPage() {
     );
   }
 
-  if (error || !titleData) {
-    return (
-      <div className="title-detail-container">
-        <button
-          type="button"
-          onClick={() => router.push('/home')}
-          className="title-back-button"
-          aria-label="もどる"
-        >
-          <span className="back-arrow">▲</span>
-          <span className="back-text">もどる</span>
-        </button>
-        
-        <div className="title-empty-wrapper">
-          <p className="title-error-message">
-            {error || '称号はまだないよ'}
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // titleData が入っている状態（データあり / デフォルトはてな表示 共通）
+  const currentTitle = titleData || DEFAULT_TITLE;
+
+  // if (error || !titleData) {
+  //   return (
+  //     <div className="title-detail-container">
+  //       <button
+  //         type="button"
+  //         onClick={() => router.push('/home')}
+  //         className="title-back-button"
+  //         aria-label="もどる"
+  //       >
+  //         <span className="back-arrow">▲</span>
+  //         <span className="back-text">もどる</span>
+  //       </button>
+
+  //       <div className="title-empty-wrapper">
+  //         <p className="title-error-message">
+  //           {error || '称号はまだないよ'}
+  //         </p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="title-detail-container">
