@@ -326,7 +326,8 @@ export default function ZooHomePage() {
         <Button onClick={handleLogout} className="logout-btn">
           ログアウト
         </Button>
-        <button
+
+        {/* <button
           onClick={() => setShowDebugOverlay((prev) => !prev)}
           style={{
             marginTop: '8px',
@@ -340,7 +341,8 @@ export default function ZooHomePage() {
           }}
         >
           {showDebugOverlay ? 'エリア枠非表示' : 'エリア枠表示'}
-        </button>
+        </button> */}
+
         {isTeacher && (
           <>
             <br />
