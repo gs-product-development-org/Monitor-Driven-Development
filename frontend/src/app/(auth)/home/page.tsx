@@ -7,6 +7,29 @@ import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import './home.css';
 
+// 全体マップの基準サイズ (useZooPlacement.ts の FOOT_RADIUS 判定基準)
+const MAP_WIDTH = 3200;
+const MAP_HEIGHT = 3600;
+
+// 配置する動物アイテムの型
+type PlacedAnimal = {
+  placement_id: number;
+  x_coord: number;
+  y_coord: number;
+  item_name?: string;
+  item_image?: string;
+};
+
+// zoo_areas テーブルの型
+type ZooAreaDebug = {
+  area_id: number;
+  area_name?: string;
+  min_x: number;
+  max_x: number;
+  min_y: number;
+  max_y: number;
+};
+
 export default function ZooHomePage() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -18,6 +41,14 @@ export default function ZooHomePage() {
 
   // 上スクロールの目印表示フラグ（一度スクロールしたら非表示）
   const [showScrollHint, setShowScrollHint] = useState<boolean>(true);
+
+  // DBから取得した配置済み動物の一覧
+  const [placedAnimals, setPlacedAnimals] = useState<PlacedAnimal[]>([]);
+
+  // ★ デバッグ用: zoo_areas の領域データ
+  const [debugAreas, setDebugAreas] = useState<ZooAreaDebug[]>([]);
+  // デバッグ描画の表示/非表示フラグ（デフォルトでON）
+  const [showDebugOverlay, setShowDebugOverlay] = useState<boolean>(true);
 
   // 1. ページリロード時に sessionStorage からユーザー情報を復元
   useEffect(() => {
@@ -31,8 +62,96 @@ export default function ZooHomePage() {
     }
   }, [user, setUser, router]);
 
-  // 2. 初期表示時に背景画像の一番下（下半分）を表示
+  // 2. DBからクラスに応じた動物の配置情報を取得 (デバッグログ追加版)
   useEffect(() => {
+    if (!user?.class_id) {
+      console.warn('【デバッグ】user または class_id が存在しません:', user);
+      return;
+    }
+
+    const fetchPlacements = async () => {
+      console.log('【デバッグ】取得開始 - class_id:', user.class_id);
+
+      try {
+        // DB問い合わせ
+        const { data, error } = await supabase
+          .from('zoo_placements')
+          .select(`
+            placement_id,
+            x_coord,
+            y_coord,
+            items (
+              item_name,
+              item_image
+            )
+          `)
+          .eq('class_id', user.class_id);
+
+        if (error) {
+          console.error('【デバッグエラー】Supabase取得失敗:', error);
+          return;
+        }
+
+        // ★ 1. DBから返ってきたそのままのデータを確認
+        console.log('【デバッグ】DBからの生レスポンス (data):', data);
+
+        if (data && data.length > 0) {
+          const formatted: PlacedAnimal[] = data.map((item: any, index: number) => {
+            // リレーション部分（items）が取れているか個別にチェック
+            console.log(`【デバッグ】Item [${index}] の結合データ:`, item.items);
+
+            return {
+              placement_id: item.placement_id,
+              x_coord: item.x_coord,
+              y_coord: item.y_coord,
+              // items が null の場合や、リレーション名が違う場合に備えて確認
+              item_name: item.items?.item_name || '名称不明',
+              item_image: item.items?.item_image || 'default.png',
+            };
+          });
+
+          // ★ 2. Stateにセットする直前の配列データを確認
+          console.log('【デバッグ】整形後の配置データ (formatted):', formatted);
+          setPlacedAnimals(formatted);
+        } else {
+          console.warn('【デバッグ】該当する class_id の zoo_placements データが 0 件でした。');
+        }
+      } catch (err) {
+        console.error('【デバッグ通信エラー】:', err);
+      }
+    };
+
+    fetchPlacements();
+  }, [user?.class_id]);
+
+  // // ★ 3. デバッグ用: zoo_areas の全座標領域を取得
+  // useEffect(() => {
+  //   const fetchAreas = async () => {
+  //     try {
+  //       const { data, error } = await supabase
+  //         .from('zoo_areas')
+  //         .select('*');
+
+  //       if (error) {
+  //         console.error('zoo_areas の取得失敗:', error);
+  //         return;
+  //       }
+
+  //       if (data) {
+  //         console.log('【デバッグ】zoo_areas 座標一覧:', data);
+  //         setDebugAreas(data);
+  //       }
+  //     } catch (err) {
+  //       console.error('zoo_areas 通信エラー:', err);
+  //     }
+  //   };
+
+  //   fetchAreas();
+  // }, []);
+
+  // 3. 初期表示時に背景画像の一番下（下半分）を表示
+  useEffect(() => {
+
     const scrollToBottom = () => {
       if (containerRef.current) {
         // scrollHeight - clientHeight で一番下までスクロール
@@ -48,7 +167,7 @@ export default function ZooHomePage() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 3. スクロール検知（一度でも上にスクロールしたらインジケーターを非表示にする）
+  // 4. スクロール検知（一度でも上にスクロールしたらインジケーターを非表示にする）
   const handleScroll = () => {
     if (!containerRef.current || !showScrollHint) return;
 
@@ -115,22 +234,113 @@ export default function ZooHomePage() {
 
   return (
     <div className="zoo-container" ref={containerRef} onScroll={handleScroll}>
-      {/* 2画面分の高さを確保する背景用ダミーコンテナ */}
-      <div className="zoo-scroll-content" />
+      {/* 全体スクロールキャンバス領域 */}
+      <div className="zoo-scroll-content">
 
-      {/* --- 全UI要素（すべて画面固定表示） --- */}
-      {/* 画面中央上部: スクロール誘導インジケーター */}
-      {showScrollHint && (
-        <div className="scroll-hint-banner">
-          ▲ 上にスクロールできます ▲
-        </div>
-      )}
+        {/* ★ デバッグ表示: zoo_areas の設定範囲（赤枠 & ラベル） */}
+        {/* {showDebugOverlay &&
+          debugAreas.map((area) => {
+            const left = (area.min_x / MAP_WIDTH) * 100;
+            const top = (area.min_y / MAP_HEIGHT) * 100;
+            const width = ((area.max_x - area.min_x) / MAP_WIDTH) * 100;
+            const height = ((area.max_y - area.min_y) / MAP_HEIGHT) * 100;
 
-      {/* 画面左上: ログアウトボタン */}
-      <div className="top-left-area">
+            return (
+              <div
+                key={area.area_id}
+                style={{
+                  position: 'absolute',
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  width: `${width}%`,
+                  height: `${height}%`,
+                  border: '2px dashed red',
+                  backgroundColor: 'rgba(255, 0, 0, 0.15)',
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                  color: 'red',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  padding: '4px',
+                }}
+              >
+                <div>Area ID: {area.area_id} ({area.area_name || '名前なし'})</div>
+                <div>X: {area.min_x} ~ {area.max_x}</div>
+                <div>Y: {area.min_y} ~ {area.max_y}</div>
+              </div>
+            );
+          })} */}
+
+        {/* 動物の一覧をプロット */}
+        {placedAnimals.map((animal) => {
+          const leftPercent = (animal.x_coord / MAP_WIDTH) * 100;
+          const topPercent = (animal.y_coord / MAP_HEIGHT) * 100;
+
+          return (
+            <React.Fragment key={animal.placement_id}>
+              {/* ★ デバッグ表示: 動物の正確な座標点 (青い点) */}
+              {/* {showDebugOverlay && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: `${leftPercent}%`,
+                    top: `${topPercent}%`,
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: 'blue',
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 30,
+                    pointerEvents: 'none',
+                  }}
+                />
+              )} */}
+
+              {/* 動物画像 */}
+              <div
+                className="placed-animal-wrapper"
+                style={{
+                  position: 'absolute',
+                  left: `${leftPercent}%`,
+                  top: `${topPercent}%`,
+                  transform: 'translate(-50%, -100%)', // 足元原点
+                  zIndex: 10,
+                }}
+              >
+                <img
+                  src={`/images/animals/${animal.item_image}`}
+                  alt={animal.item_name}
+                  className="placed-animal-img"
+                />
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* --- 全UI要素（画面固定） --- */}
+
+      {/* ★ 左上に「エリア枠表示 ON/OFF」の切り替えボタンを追加 */}
+      <div className="top-left-area" style={{ zIndex: 100 }}>
         <Button onClick={handleLogout} className="logout-btn">
           ログアウト
         </Button>
+        <button
+          onClick={() => setShowDebugOverlay((prev) => !prev)}
+          style={{
+            marginTop: '8px',
+            fontSize: '11px',
+            padding: '4px 8px',
+            background: '#333',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+          }}
+        >
+          {showDebugOverlay ? 'エリア枠非表示' : 'エリア枠表示'}
+        </button>
         {isTeacher && (
           <>
             <br />
@@ -185,15 +395,6 @@ export default function ZooHomePage() {
           </div>
         )}
       </div>
-
-      {/* 画面中央下: お題を決めるボタン（教員のみ） */}
-      {isTeacher && (
-        <div className="bottom-center-area">
-          <Button onClick={handleSetTopic} className="topic-btn-teacher">
-            お題を決める
-          </Button>
-        </div>
-      )}
 
       {/* 画面最下部: 宝箱・称号を見るボタン */}
       <div className="bottom-bar">
