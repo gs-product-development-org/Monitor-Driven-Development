@@ -7,7 +7,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './title.css';
 
 type TitleData = {
-  title_id: number;
+  title_id: number | null;
   title_name: string;
   title_detail: string;
   image?: string;
@@ -15,7 +15,7 @@ type TitleData = {
 
 // 初回・未取得時のデフォルトデータ
 const DEFAULT_TITLE: TitleData = {
-  title_id: 0,
+  title_id: null,
   title_name: 'まだないよ',
   title_detail: '意見を公開して称号をゲットしよう！',
   image: '/images/animals/non_animal.png',
@@ -25,7 +25,7 @@ export default function TitleDetailPage() {
   const router = useRouter();
   const { user } = useRequireAuth();
 
-  const [titleData, setTitleData] = useState<TitleData | null>(null);
+  const [titleData, setTitleData] = useState<TitleData>(DEFAULT_TITLE);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,30 +85,6 @@ export default function TitleDetailPage() {
     );
   }
 
-  // titleData が入っている状態（データあり / デフォルトはてな表示 共通）
-  const currentTitle = titleData || DEFAULT_TITLE;
-
-  // if (error || !titleData) {
-  //   return (
-  //     <div className="title-detail-container">
-  //       <button
-  //         type="button"
-  //         onClick={() => router.push('/home')}
-  //         className="title-back-button"
-  //         aria-label="もどる"
-  //       >
-  //         <span className="back-arrow">▲</span>
-  //         <span className="back-text">もどる</span>
-  //       </button>
-
-  //       <div className="title-empty-wrapper">
-  //         <p className="title-error-message">
-  //           {error || '称号はまだないよ'}
-  //         </p>
-  //       </div>
-  //     </div>
-  //   );
-  // }
 
   return (
     <div className="title-detail-container">
