@@ -3,169 +3,150 @@
   position: relative;
   width: 100vw;
   height: 100vh;
-  padding: 24px;
+  padding: 32px 24px;
   box-sizing: border-box;
-  background-image: url('/images/zoo-bg.png'); /* 背景画像 */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: #FF648D;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
   overflow: hidden;
-}
-
-/* 1. 画面一番上: ヘッダーメッセージ */
-.place-header {
-  background-color: rgba(255, 255, 255, 0.92);
-  border: 2px solid #cbd5e1;
-  border-radius: 16px;
-  padding: 10px 32px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.place-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #1e293b;
-  margin: 0;
-}
-
-/* 2. アイテムプレビューカード */
-.place-item-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background-color: rgba(255, 255, 255, 0.95);
-  border: 3px solid #f59e0b;
-  border-radius: 20px;
-  padding: 12px 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  margin: 12px 0;
-}
-
-.item-image-wrapper {
-  width: 64px;
-  height: 64px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.item-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.item-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.item-name {
-  font-size: 18px;
-  font-weight: bold;
-  color: #1e293b;
-}
-
-/* 1/3 形式の分数表示 */
-.item-counter {
-  font-size: 16px;
-  font-weight: bold;
-  color: #d97706;
-  background-color: #fef3c7;
-  padding: 2px 10px;
-  border-radius: 12px;
-  text-align: center;
-}
-
-/* 3. 画面中央: 5つのエリアの切り抜きマス目 */
-.place-areas-grid {
-  flex: 1;
-  width: 100%;
-  max-width: 800px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  padding: 12px 0;
-}
-
-/* 各エリアマス目 */
-.area-cell {
-  width: 140px;
-  height: 140px;
-  background-color: #ffffff;
-  border: 4px solid #e2e8f0;
-  border-radius: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
-  box-sizing: border-box;
-  cursor: pointer;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
   user-select: none;
 }
 
-.area-cell:hover:not(.disabled) {
-  transform: translateY(-4px);
-  border-color: #93c5fd;
-}
-
-/* クリックされ選択されたマス目の縁取り強調 */
-.area-cell.selected {
-  border: 5px solid #22c55e; /* 太い緑色の太枠 */
-  box-shadow: 0 0 16px rgba(34, 197, 94, 0.4);
-  transform: scale(1.06);
-  background-color: #f0fdf4;
-}
-
-.area-image-box {
-  width: 70px;
-  height: 70px;
-  margin-bottom: 6px;
-}
-
-.area-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.area-label {
-  font-size: 12px;
-  font-weight: bold;
-  color: #334155;
+/* 1. 画面一番上: 枠なしの黒文字タイトル */
+.place-title-plain {
+  font-size: 45px;
+  font-weight: 800;
+  color: #000000;
+  margin: 0;
   text-align: center;
 }
 
-/* 4. 画面下部: OKボタン */
-.place-footer-action {
-  width: 100%;
-  max-width: 800px;
+/* 2. アイテム画像 ＋ 分数表示（枠なし・小さめ） */
+.place-item-section {
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: -10px;
 }
 
-.place-ok-button {
-  height: 52px;
-  padding: 0 40px;
-  font-size: 18px;
+.place-item-mini-img {
+  width: 160px;
+  height: 160px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+}
+
+.place-item-fraction {
+  font-size: 25px;
   font-weight: bold;
-  background-color: #22c55e;
-  border-color: #16a34a;
-  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  color: #000000;
 }
 
-.place-ok-button:disabled {
-  opacity: 0.5;
+/* 3. 画面中央: 5つの正方形・黒縁エリア横並び */
+.place-areas-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+  width: 100%;
+  max-width: 1350px;
+  margin: 10px 0;
+}
+
+/* 各エリアコンテナ（正方形ボックス＋下部の名前ラベル） */
+.square-area-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 正方形の黒縁マス目 */
+.square-area-box {
+  width: 250px;
+  height: 250px;
+  aspect-ratio: 1 / 1;
+  background-color: #ffffff;
+  border: 4px solid #000000; /* 太めの黒枠 */
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 5px;
+  box-sizing: border-box;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.square-area-box:hover {
+  transform: translateY(-4px);
+}
+
+/* 選択されたエリアの強調（太い緑枠＋黒枠の複合ハイライト） */
+.square-area-box.selected {
+  border: 6px solid #22c55e; /* 鮮やかな緑枠 */
+  box-shadow: 0 0 0 3px #000000, 0 8px 20px rgba(34, 197, 94, 0.5); /* 黒縁＋緑のシャドウ */
+  transform: scale(1.08);
+  background-color: #f0fdf4;
+}
+
+.square-area-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 7px;
+}
+
+/* ★ 各エリア下の名前（黒文字） */
+.square-area-label {
+  font-size: 28px;
+  font-weight: 800;
+  color: #000000;
+  text-align: center;
+}
+
+/* 4. 画面下部中央: 大きなOKボタン */
+.place-footer-center {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.place-ok-button-large {
+  height: 120px;
+  width: 380px;
+  font-size: 60px;
+  font-weight: bold;
+  background-color: #FF3333;
+  color: #ffffff;
+  border: 9px solid #000000;
+  border-radius: 1.0rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 20px;
+}
+
+.place-ok-button-large:hover:not(:disabled) {
+  background-color: #ff7171;
+  border: 9px solid #525252;
+  transform: translateY(-2px) scale(1.02);
+}
+
+.place-ok-button-large:disabled {
+  background-color: #94a3b8;
+  border-color: #64748b;
+  opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
