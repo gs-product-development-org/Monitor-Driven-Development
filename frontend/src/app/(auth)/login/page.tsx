@@ -23,14 +23,10 @@ export default function LoginPage() {
   const [classId, setClassId] = useState('');
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
-
-  // エラーメッセージとローディング状態の管理
-  const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage('');
     setIsLoading(true);
 
     try {
@@ -39,7 +35,7 @@ export default function LoginPage() {
       const parsedUserNumber = parseInt(studentId, 10);
 
       if (isNaN(parsedClassId) || isNaN(parsedUserNumber)) {
-        setErrorMessage('クラス番号と出席番号は半角数字で入力してください。');
+        alert('クラス番号と出席番号は半角数字で入力してください。');
         setIsLoading(false);
         return;
       }
@@ -53,7 +49,7 @@ export default function LoginPage() {
 
       if (error) {
         console.error('認証エラー:', error.message);
-        setErrorMessage('ログイン処理中にエラーが発生しました。');
+        alert('ログイン処理中にエラーが発生しました。');
         setIsLoading(false);
         return;
       }
@@ -62,20 +58,17 @@ export default function LoginPage() {
       const userList = data as AuthUserResponse[];
 
       if (!userList || userList.length === 0) {
-        setErrorMessage('クラス番号、出席番号、またはパスワードが正しくありません。');
+        alert('クラス番号、出席番号、またはパスワードが正しくありません。');
         setIsLoading(false);
         return;
       }
 
-      // 該当箇所の修正（LoginPage.tsx 内の handleStart）
-
-      // 該当するユーザー情報を取得
+      // 4. ユーザー情報を整形して Zustand と sessionStorage に保存
       const user = userList[0];
 
-      // ★ useUserStore が求める型に変換するオブジェクトを作成
       const formattedUserForStore = {
         user_id: user.user_id,
-        user_number: user.user_number, // ★ 追加: useUserStore で必須となっているプロパティ
+        user_number: user.user_number,
         class_id: String(user.class_id),
         student_id: String(user.user_number),
         role: user.role,
@@ -84,12 +77,12 @@ export default function LoginPage() {
       setUser(formattedUserForStore);
       sessionStorage.setItem('user_info', JSON.stringify(formattedUserForStore));
 
-      // 5. 教師・児童問わず /home へ遷移
+      // 5. ホーム画面へ遷移
       router.push('/home');
 
     } catch (err) {
       console.error('予期せぬエラー:', err);
-      setErrorMessage('ログインに失敗しました。時間をおいて再試行してください。');
+      alert('ログインに失敗しました。時間をおいて再試行してください。');
     } finally {
       setIsLoading(false);
     }
@@ -98,13 +91,6 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       <form onSubmit={handleStart} className="login-form">
-        {/* エラーメッセージ表示エリア */}
-        {errorMessage && (
-          <div className="login-error-message" style={{ color: 'red', marginBottom: '12px', textAlign: 'center' }}>
-            {errorMessage}
-          </div>
-        )}
-
         {/* 1. クラスID */}
         <input
           type="text"
