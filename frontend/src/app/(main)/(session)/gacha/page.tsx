@@ -6,139 +6,182 @@ import { supabase } from '@/lib/supabase';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './gacha.css';
 
-// ----------------------------------------------------
-// 設定定数
-// ----------------------------------------------------
-// ガチャを引ける回数（0 〜 3 で設定可能）
-const TOTAL_GACHA_COUNT: number = 3;
-
-// 排出アイテムをセッションに保存するキー名
 export const GACHA_RESULT_ITEMS_KEY = 'gacha_result_items';
-
-// GIFアニメーションの再生時間（ミリ秒）
+const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
 const GIF_DURATION_MS = 6700;
 
-// RPC関数の返り値に合わせた型定義
 type Item = {
   obtained_item_id: number;
   item_name: string;
-  item_image: string; // 例: "bear.png" などのファイル名＋拡張子
+  item_image: string;
   rarity: string;
 };
 
-// ガチャの内部ステータス型
 type GachaState = 'start' | 'animating' | 'result' | 'empty';
 
 export default function GachaPage() {
   const router = useRouter();
-  const { user } = useRequireAuth(); // 教員認証フック
+  const { user } = useRequireAuth();
 
-  // 現在のステータス
-  const [gachaState, setGachaState] = useState<GachaState>(
-    (TOTAL_GACHA_COUNT === 0 ? 'empty' : 'start') as GachaState
-  );
-
-  // ガチャを引いた回数カウンタ
+  const [gachaState, setGachaState] = useState<GachaState>('start');
+  const [totalGachaCount, setTotalGachaCount] = useState<number>(0);
   const [currentCount, setCurrentCount] = useState<number>(0);
-
-  // 現在画面に表示中の排出アイテム
   const [currentItem, setCurrentItem] = useState<Item | null>(null);
-
-  // これまで獲得した全アイテムの履歴
   const [obtainedItems, setObtainedItems] = useState<Item[]>([]);
-
-  // アニメーション中（連打防止ガードフラグ）
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-
-  // GIFのキャッシュバスター用タイムスタンプ（毎実行ごとに新しくして最初から再生）
   const [gifTimestamp, setGifTimestamp] = useState<number>(Date.now());
 
-  // タイマー参照
+  // メーター用 State
+  const [meterValue, setMeterValue] = useState<number>(0);
+  const [needValue, setNeedValue] = useState<number>(1);
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // コンポーネント破棄時にタイマーをクリア
+  // メーターのみ最新化する関数
+  const refreshMeter = useCallback(async (classId: number) => {
+    try {
+      const { data, error } = await supabase.rpc('get_meter', {
+        p_class_id: classId,
+      });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setMeterValue(data[0].gacha_meter ?? 0);
+        setNeedValue(data[0].need_value > 0 ? data[0].need_value : 1);
+      }
+    } catch (err) {
+      console.error('get_meter の取得エラー:', err);
+    }
+  }, []);
+
+  // 初期読み込み：ガチャ分配計算RPC呼び出し
+  useEffect(() => {
+    const initGachaData = async () => {
+      try {
+        // class_id の特定
+        let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
+        if (!classId) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          classId = Number(sessionData?.session?.user?.user_metadata?.class_id);
+        }
+
+        // topic_id の特定（sessionStorageから復元）
+        let topicId: number | null = null;
+        const storedTopic = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
+        if (storedTopic) {
+          try {
+            const parsed = JSON.parse(storedTopic);
+            if (parsed.topic_id) topicId = Number(parsed.topic_id);
+          } catch (e) {
+            console.error('sessionStorage の読み込み失敗:', e);
+          }
+        }
+
+        if (!classId || !topicId) {
+          console.warn('class_id または topic_id が不足しています');
+          // メーター初期化のみ試行
+          if (classId) await refreshMeter(classId);
+          return;
+        }
+
+        // get_gacha_distribution 実行
+        const { data, error } = await supabase.rpc('get_gacha_distribution', {
+          p_class_id: classId,
+          p_topic_id: topicId,
+        });
+
+        if (error) {
+          console.error('get_gacha_distribution エラー:', error);
+          await refreshMeter(classId);
+          return;
+        }
+
+        if (Array.isArray(data) && data.length > 0) {
+          const res = data[0];
+          const quotient = res.quotient ?? 0;
+          setTotalGachaCount(quotient);
+
+          if (quotient === 0) {
+            setGachaState('empty');
+          } else {
+            setGachaState('start');
+          }
+        }
+
+        // メーター表示用の最新データも反映
+        await refreshMeter(classId);
+      } catch (err) {
+        console.error('ガチャデータ初期化例外エラー:', err);
+      }
+    };
+
+    initGachaData();
+  }, [user, refreshMeter]);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 
-  // ガチャを1回実行する（RPC呼び出し ＋ GIF再生タイマー）
+  // ガチャの実行ロジック
   const executeGacha = useCallback(async () => {
     setIsAnimating(true);
     setGachaState('animating');
     setCurrentItem(null);
-
-    // GIFを最初から再生させるためにタイムスタンプを更新
     setGifTimestamp(Date.now());
 
     try {
-      // Supabase の RPC 関数 draw_gacha() を呼び出し
       const { data, error } = await supabase.rpc('draw_gacha');
 
-      if (error) {
-        console.error('draw_gacha の実行に失敗しました:', error);
-        alert('ガチャの実行中にエラーが発生しました');
+      if (error || !Array.isArray(data) || data.length === 0) {
+        alert('ガチャの実行に失敗しました');
         setIsAnimating(false);
         setGachaState('start');
         return;
       }
 
-      const selectedItem: Item | null =
-        Array.isArray(data) && data.length > 0 ? data[0] : null;
+      const selectedItem: Item = data[0];
 
-      if (!selectedItem) {
-        alert('アイテムを取得できませんでした');
-        setIsAnimating(false);
-        setGachaState('start');
-        return;
-      }
-
-      // GIFアニメーション再生時間後に結果表示ステータスに切り替え
-      timerRef.current = setTimeout(() => {
+      timerRef.current = setTimeout(async () => {
         setCurrentItem(selectedItem);
         setObtainedItems((prev) => [...prev, selectedItem]);
         setCurrentCount((prev) => prev + 1);
-
         setGachaState('result');
         setIsAnimating(false);
+
+        // 実行後にメーターを再更新
+        let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
+        if (classId) refreshMeter(classId);
       }, GIF_DURATION_MS);
     } catch (err) {
-      console.error('予期せぬエラーが発生しました:', err);
+      console.error('予期せぬエラー:', err);
       setIsAnimating(false);
       setGachaState('start');
     }
-  }, []);
+  }, [user, refreshMeter]);
 
-  // メイン進行アクション（クリック または Enterキー 押下時）
+  // アクション制御
   const handleNextStep = useCallback(() => {
-    // GIFアニメーション中のクリックは無効化（判定スキップ）
     if (isAnimating) return;
 
-    // パターンA: 回数が 0 回の場合 -> ホーム画面へ戻る
-    if (TOTAL_GACHA_COUNT === 0 || gachaState === 'empty') {
+    if (totalGachaCount === 0 || gachaState === 'empty') {
       router.push('/home');
       return;
     }
 
-    // パターンB: 初期状態「ガチャスタート！」表示中 -> 1回目のガチャ開始
     if (gachaState === 'start') {
       executeGacha();
       return;
     }
 
-    // パターンC: ガチャ結果表示中
     if (gachaState === 'result') {
-      if (currentCount < TOTAL_GACHA_COUNT) {
-        // まだガチャを引ける回数が残っている場合 -> 次のガチャを開始
+      if (currentCount < totalGachaCount) {
         executeGacha();
       } else {
-        // すべてのガチャを引き終わった場合 -> セッションに獲得アイテム情報を保存して配置画面へ遷移
         sessionStorage.setItem(
           GACHA_RESULT_ITEMS_KEY,
           JSON.stringify(obtainedItems)
         );
-        console.log('排出アイテムを保存しました:', obtainedItems);
         router.push('/placement');
       }
     }
@@ -146,12 +189,12 @@ export default function GachaPage() {
     isAnimating,
     gachaState,
     currentCount,
+    totalGachaCount,
     executeGacha,
     obtainedItems,
     router,
   ]);
 
-  // キーボード (Enterキー) イベントの購読
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Enter') {
@@ -164,14 +207,50 @@ export default function GachaPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleNextStep]);
 
+  // ゲージ率の計算（0 ~ 100%）
+  const fillPercentage = Math.min(
+    100,
+    Math.max(0, Math.floor((meterValue / needValue) * 100))
+  );
+
   return (
     <div className="gacha-container" onClick={handleNextStep}>
-      {/* バックグラウンド背景 */}
       <div className="gacha-background" />
 
-      {/* メイン中央表示コンテンツエリア */}
+      {/* --- カスタムガチャメーターUI --- */}
+      <div className="gacha-meter-container" onClick={(e) => e.stopPropagation()}>
+        <div className="gacha-meter-label">
+          <span>ガチャ</span>
+          <span>ゲージ</span>
+        </div>
+
+        <div className="gacha-meter-bar-outer">
+          <div
+            className="gacha-meter-bar-inner"
+            style={{ width: `${fillPercentage}%` }}
+          />
+        </div>
+
+        <div className="gacha-meter-eggs">
+          {[0, 1, 2].map((index) => {
+            // 引ける回数（totalGachaCount - currentCount）に基づいて表示状態を切替
+            const remainingDraws = totalGachaCount - currentCount;
+            const isAvailable = index < remainingDraws;
+
+            return (
+              <img
+                key={index}
+                src="/images/contents/gacha-egg.png"
+                alt="ガチャ卵"
+                className={`gacha-egg-icon ${isAvailable ? 'active' : 'inactive'}`}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {/* メインコンテンツ */}
       <div className="gacha-center-content">
-        {/* 1. ガチャ回数が 0 回の場合 */}
         {gachaState === 'empty' && (
           <div className="gacha-start-wrapper">
             <div className="gacha-image-container">
@@ -180,12 +259,11 @@ export default function GachaPage() {
                 alt="ガチャ機"
                 className="gacha-center-image"
               />
-              <div className="gacha-overlay-title">ガチャはありません</div>
+              <div className="gacha-overlay-title">まだひけないよ</div>
             </div>
           </div>
         )}
 
-        {/* 2. 初期状態（「ガチャスタート！」表示） */}
         {gachaState === 'start' && (
           <div className="gacha-start-wrapper">
             <div className="gacha-image-container">
@@ -199,11 +277,9 @@ export default function GachaPage() {
           </div>
         )}
 
-        {/* 3 & 4. ガチャアニメーション中 ＋ ガチャ結果表示 */}
         {(gachaState === 'animating' || gachaState === 'result') && (
           <div className="gacha-result-wrapper">
             <div className="gacha-image-container">
-              {/* GIF画像（結果画面の時は dim-gif クラスを付与して薄くする） */}
               <img
                 src={`/images/contents/gacha-animation.gif?timestamp=${gifTimestamp}`}
                 alt="ガチャアニメーション"
@@ -212,7 +288,6 @@ export default function GachaPage() {
                 }`}
               />
 
-              {/* ガチャ結果表示（GIFの上に重ねて表示） */}
               {gachaState === 'result' && currentItem && (
                 <div className="gacha-item-overlay">
                   <img
@@ -227,13 +302,6 @@ export default function GachaPage() {
           </div>
         )}
       </div>
-
-      {/* 残りガチャ回数のステータス表示 */}
-      {TOTAL_GACHA_COUNT > 0 && (
-        <div className="gacha-count-badge">
-          ガチャ回数: {currentCount} / {TOTAL_GACHA_COUNT}
-        </div>
-      )}
     </div>
   );
 }

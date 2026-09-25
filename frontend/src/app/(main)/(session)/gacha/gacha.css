@@ -12,7 +12,6 @@
   background-color: #FF648D;
 }
 
-/* 背景画像の設定 */
 .gacha-background {
   position: absolute;
   top: 0;
@@ -22,6 +21,78 @@
   background-size: cover;
   background-position: center;
   z-index: 1;
+}
+
+/* --- カスタムガチャメーターUI --- */
+.gacha-meter-container {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 10px 18px;
+  border-radius: 40px;
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* 1. ガチャゲージラベル */
+.gacha-meter-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  font-size: 0.9rem;
+  font-weight: 900;
+  color: #FF4A70;
+  white-space: nowrap;
+}
+
+/* 2. メーター外枠 */
+.gacha-meter-bar-outer {
+  width: 160px;
+  height: 20px;
+  background-color: #E2E8F0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #CBD5E1;
+  position: relative;
+}
+
+/* メーター内側の伸ばすゲージ */
+.gacha-meter-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #FF9A8B 0%, #FF6A88 55%, #FF99AC 100%);
+  border-radius: 8px;
+  transition: width 0.5s ease-in-out;
+}
+
+/* 3. 卵アイコンエリア */
+.gacha-meter-eggs {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+}
+
+.gacha-egg-icon {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.gacha-egg-icon.active {
+  opacity: 1;
+  filter: drop-shadow(0 2px 4px rgba(255, 100, 141, 0.4));
+}
+
+.gacha-egg-icon.inactive {
+  opacity: 0.3;
+  filter: grayscale(80%);
 }
 
 /* 中央表示用 wrapper */
@@ -40,7 +111,6 @@
   align-items: center;
 }
 
-/* 画像とテキスト・アイテムを重ねる容器 */
 .gacha-image-container {
   position: relative;
   display: inline-flex;
@@ -48,23 +118,20 @@
   align-items: center;
 }
 
-/* ★ ガチャ静止画像およびGIF画像のサイズをさらに拡大 */
 .gacha-center-image,
 .gacha-gif-image {
-  width: 1000px; /* 650px -> 800px に拡大 */
+  width: 1000px;
   height: auto;
-  max-height: 85vh; /* 80vh -> 85vh に拡大 */
+  max-height: 85vh;
   object-fit: contain;
   transition: opacity 0.4s ease, filter 0.4s ease;
 }
 
-/* GIF完了時に薄く半透明化するスタイル */
 .gacha-gif-image.dim-gif {
   opacity: 0.35;
   filter: brightness(0.9);
 }
 
-/* ★ 画像の上に被せるテキスト（かわいらしいピンク系デザイン＋ふわふわ上下アニメーション） */
 .gacha-overlay-title {
   position: absolute;
   top: 45%;
@@ -72,15 +139,14 @@
   font-size: 3.2rem;
   font-weight: 900;
   color: #ffffff;
-  background: rgba(255, 240, 245, 0.85); /* 優しいパステルピンクの半透明背景 */
+  background: rgba(255, 240, 245, 0.85);
   padding: 18px 40px;
-  border-radius: 50px; /* ぷっくり丸い角丸 */
-  border: 4px solid #FFF; /* 白い太枠線 */
+  border-radius: 50px;
+  border: 4px solid #FFF;
   box-shadow: 
     0 8px 20px rgba(255, 100, 141, 0.4),
     inset 0 2px 4px rgba(255, 255, 255, 0.8);
   
-  /* 文字のポップなフチ取り効果 */
   text-shadow: 
     3px 3px 0 #FF4A70,
    -3px -3px 0 #FF4A70,
@@ -92,31 +158,27 @@
   pointer-events: none;
   backdrop-filter: blur(6px);
 
-  /* ふわふわ揺れるアニメーションの指定 */
   animation: floating 2.4s ease-in-out infinite;
 }
 
-/* ★ 上下に揺れるふわふわアニメーションの定義 */
 @keyframes floating {
   0% {
     transform: translate(-50%, -50%);
   }
   50% {
-    transform: translate(-50%, -62%); /* 少し上に持ちあがる */
+    transform: translate(-50%, -62%);
   }
   100% {
     transform: translate(-50%, -50%);
   }
 }
 
-/* ガチャ結果表示アニメーション */
 .gacha-result-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-/* 薄くなったGIF画像の上に重ねて表示される排出アイテムエリア */
 .gacha-item-overlay {
   position: absolute;
   top: 50%;
@@ -129,7 +191,6 @@
   animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* 排出アイテム画像 */
 .gacha-item-image {
   width: 450px;
   height: 450px;
@@ -137,7 +198,6 @@
   filter: drop-shadow(0 12px 24px rgba(255, 255, 255, 0.4));
 }
 
-/* アイテム名 */
 .gacha-item-name {
   margin-top: 16px;
   font-size: 60px;
@@ -147,20 +207,6 @@
     2px 2px 4px rgba(0, 0, 0, 0.9),
    -2px -2px 4px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
-}
-
-/* ガチャ残り回数バッジ */
-.gacha-count-badge {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  z-index: 20;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 30px;
-  font-weight: bold;
-  font-size: 1.1rem;
 }
 
 @keyframes popIn {
