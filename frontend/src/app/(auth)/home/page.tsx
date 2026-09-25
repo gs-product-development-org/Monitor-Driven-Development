@@ -61,6 +61,7 @@ export default function ZooHomePage() {
           }
         }
       )
+      
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log(`生徒: クラスID ${classId} のお題追加監視を開始しました`);
