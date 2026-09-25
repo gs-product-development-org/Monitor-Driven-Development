@@ -1,26 +1,65 @@
-/* 画面全体のレイアウト定義 */
+/* 画面全体のコンテナ（スクロール領域） */
 .zoo-container {
   position: relative;
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
-  background-image: url('/images/contents/home-back.png');
-  background-size: cover;
-  background-position: center;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+/* 縦2画面分 (200vh) のスクロール用背景コンテンツ */
+.zoo-scroll-content {
+  width: 100%;
+  height: 200vh;
+  background-image: url('/images/contents/zoo.png');
+  background-size: 100% 200vh;
+  background-position: top center;
   background-repeat: no-repeat;
 }
 
+/* 画面中央上部：スクロール誘導インジケーター（画面固定） */
+.scroll-hint-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background-color: rgba(228, 228, 228, 0.8);
+  color: #000000;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 10px 24px;
+  border-radius: 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  animation: floatUp 1.5s infinite ease-in-out;
+}
+
+@keyframes floatUp {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-8px);
+  }
+}
+
+/* --- すべてのボタン・UIエリア（常時固定表示） --- */
+
 /* 左上: ログアウトボタン */
 .top-left-area {
-  position: absolute;
+  position: fixed;
   top: 20px;
   left: 20px;
   z-index: 10;
   text-align: center;
 }
-/* 画面右上エリアの全般 */
+
+/* 右上: バナー＆教員メニュー */
 .top-right-area {
-  position: absolute;
+  position: fixed;
   top: 24px;
   right: 24px;
   display: flex;
@@ -30,7 +69,35 @@
   z-index: 10;
 }
 
-/* 共通の横長画像 */
+/* 中央下: お題を決めるボタン */
+.bottom-center-area {
+  position: fixed;
+  bottom: 150px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+/* 最下部: 宝箱・称号ボタンエリア */
+.bottom-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  right: 24px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 100px;
+  pointer-events: none; /* 余白をクリック透過 */
+  z-index: 10;
+}
+
+.bottom-left-area,
+.bottom-right-area {
+  pointer-events: auto; /* ボタン本体はクリック可能に */
+}
+
+/* --- 各種パーツのスタイル --- */
 .banner-wrapper {
   width: 320px;
   height: auto;
@@ -43,14 +110,13 @@
   object-fit: contain;
 }
 
-/* 教師用のボタングループ */
 .teacher-actions-column {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 12px;
 }
-/* アイコン＋ボタンのラッパー */
+
 .icon-button-wrapper {
   position: relative;
   display: inline-flex;
@@ -60,23 +126,19 @@
   transition: transform 0.15s ease;
 }
 
-/* ラッパー全体ホバー時の挙動 */
 .icon-button-wrapper:hover {
   transform: translateY(-2px);
 }
 
-/* ホバー時にボタンの白い膜を表示 */
 .icon-button-wrapper:hover .NG-teacher-btn::after, 
 .icon-button-wrapper:hover .summary-teacher-btn::after {
   opacity: 1;
 }
 
-/* ホバー時にアイコン画像を白く発光させる（明るさ＋白シャドウ） */
 .icon-button-wrapper:hover .overlap-icon {
   filter: brightness(1.3) drop-shadow(0 0 2px rgba(255, 255, 255, 0.8));
 }
 
-/* 重なる画像アイコン */
 .overlap-icon {
   position: absolute;
   left: -30px;
@@ -85,13 +147,12 @@
   object-fit: contain;
   z-index: 2;
   pointer-events: none;
-  transition: filter 0.2s ease; /* フィルターのアニメーション */
+  transition: filter 0.2s ease;
 }
 
-/* CSSでデザインした横長ボタン */
 .NG-teacher-btn,
 .summary-teacher-btn {
-  position: relative; /* 👈 ::after の基準位置にするため必須 */
+  position: relative;
   color: #000000;
   font-family: 'DotGothic16', sans-serif;
   font-size: 28px;
@@ -111,11 +172,10 @@
   padding-right: 20px;
   padding-top: 10px;
   padding-bottom: 15px;
-  overflow: hidden; /* 👈 角丸からはみ出る幕を切り取る */
+  overflow: hidden;
   box-sizing: border-box;
 }
 
-/* ボタン内の白い半透明幕 */
 .NG-teacher-btn::after,
 .summary-teacher-btn::after {
   content: '';
@@ -124,12 +184,11 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.35); /* 白い半透明 */
+  background-color: rgba(255, 255, 255, 0.35);
   opacity: 0;
   transition: background-color 0.2s ease, transform 0.2s ease;
   pointer-events: none;
-  /* 5px のボーダーの内側に合わせるため、内側の角丸サイズを設定 */
-  border-radius: 12px; /* 17px - 5px = 12px */
+  border-radius: 12px;
 }
 
 .NG-teacher-btn {
@@ -140,36 +199,6 @@
   background-color: #1B8DFF;
 }
 
-
-/* 下部エリア全体のコンテナ */
-.bottom-bar {
-  position: absolute;
-  bottom: 24px;
-  left: 24px;
-  right: 24px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 100px;
-  pointer-events: none; /* 下部領域の余白をクリック透過させる */
-}
-
-/* ボタン要素のクリックイベントを有効化 */
-.bottom-left-area,
-.bottom-center-area,
-.bottom-right-area {
-  pointer-events: auto;
-}
-
-/* 画面下の真ん中（お題を決めるボタン）の位置調整 */
-.bottom-center-area {
-  position: absolute;
-  bottom: 150px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* ボタンごとのデザイン指定 */
 .home-btn {
   height: 100px;
   width: 350px;
@@ -189,10 +218,6 @@
   transform: translateY(-2px) scale(1.02);
   background-color: #FFF897;
   border: 8px solid #3F3F3F;
-}
-
-.zoo-btn-sub {
-  background-color: #64748b;
 }
 
 .logout-btn {
@@ -216,11 +241,14 @@
   border: 6px solid #4b4b4b;
 }
 
-.user-info{
-  width: 200px;
-  font-size: 18px;
+.user-info {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 16px;
   color: #ffffff;
-  background-color: rgba(97, 97, 97, 0.8);
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
 }
 
 .topic-btn-teacher {

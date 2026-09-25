@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore, UserState } from '@/stores/useUserStore';
 import { Button } from '@/components/ui/Button';
@@ -9,11 +9,15 @@ import './home.css';
 
 export default function ZooHomePage() {
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Zustandストアからユーザー情報と更新用アクションを取得
   const user = useUserStore((state: UserState) => state.user);
   const setUser = useUserStore((state: UserState) => state.setUser);
   const clearUser = useUserStore((state: UserState) => state.clearUser);
+
+  // 上スクロールの目印表示フラグ（一度スクロールしたら非表示）
+  const [showScrollHint, setShowScrollHint] = useState<boolean>(true);
 
   // 1. ページリロード時に sessionStorage からユーザー情報を復元
   useEffect(() => {
@@ -22,25 +26,52 @@ export default function ZooHomePage() {
       if (savedUser) {
         setUser(JSON.parse(savedUser));
       } else {
-        // ログイン情報がない場合はログイン画面へリダイレクト
         router.push('/login');
       }
     }
   }, [user, setUser, router]);
 
-  // ★ 教員かどうか判定
+  // 2. 初期表示時に背景画像の一番下（下半分）を表示
+  useEffect(() => {
+    const scrollToBottom = () => {
+      if (containerRef.current) {
+        // scrollHeight - clientHeight で一番下までスクロール
+        containerRef.current.scrollTop =
+          containerRef.current.scrollHeight - containerRef.current.clientHeight;
+      }
+    };
+
+    // 初期描画直後と少し遅延させたタイミングの二段階で実行（確実に下半分を表示させるため）
+    scrollToBottom();
+    const timer = setTimeout(scrollToBottom, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 3. スクロール検知（一度でも上にスクロールしたらインジケーターを非表示にする）
+  const handleScroll = () => {
+    if (!containerRef.current || !showScrollHint) return;
+
+    const container = containerRef.current;
+    const isAtBottom =
+      container.scrollTop + container.clientHeight >= container.scrollHeight - 30;
+
+    // 初期位置（一番下）から上に動いたら消去
+    if (!isAtBottom) {
+      setShowScrollHint(false);
+    }
+  };
+
+  // 教員かどうか判定
   const isTeacher = user?.role === 'teacher';
 
-  // 2. 生徒端末のみ: 先生側で新しいお題（topics）が追加されたかをリアルタイム監視
+  // 生徒端末のリアルタイム監視
   useEffect(() => {
-    // ユーザー情報がない、または教員の場合は生徒用リアルタイム監視を行わない
     if (!user || isTeacher) return;
 
-    // 所属クラスIDを取得
     const classId = user.class_id;
     if (!classId) return;
 
-    // Supabase Realtime チャンネルの設定
     const channel = supabase
       .channel(`topic-watch-class-${classId}`)
       .on(
@@ -48,27 +79,17 @@ export default function ZooHomePage() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'topics',                     // DBのお題テーブル
-          filter: `class_id=eq.${classId}`,    // 自クラスのINSERTのみフィルタリング
+          table: 'topics',
+          filter: `class_id=eq.${classId}`,
         },
         (payload) => {
-          // 万が一のための二重チェック（型を揃えて比較）
           if (Number(payload.new.class_id) === Number(classId)) {
-            console.log('自クラスのお題追加を検知しました:', payload.new);
-            
-            // 生徒側画面を自動的に /wait?mode=topic_cushion に遷移させる
             router.push('/wait?mode=topic_cushion');
           }
         }
       )
-      
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log(`生徒: クラスID ${classId} のお題追加監視を開始しました`);
-        }
-      });
+      .subscribe();
 
-    // コンポーネント破棄時にリアルタイムリスナーを解約
     return () => {
       supabase.removeChannel(channel);
     };
@@ -77,42 +98,34 @@ export default function ZooHomePage() {
   // ログアウト処理
   const handleLogout = () => {
     try {
-      // 1. Zustandのユーザー状態をクリア
       clearUser();
-
-      // 2. セッションストレージのユーザー情報を削除
       sessionStorage.removeItem('user_info');
     } catch (error) {
       console.error('ログアウト処理エラー:', error);
     } finally {
-      // 3. ログイン画面へ遷移
       router.push('/login');
     }
   };
 
-  // 各ボタンの遷移アクション
-  const handleOpenTreasure = () => {
-    router.push('/history');
-  };
-
-  const handleOpenTitle = () => {
-    router.push('/title');
-  };
-
-  const handleOpenNgWord = () => {
-    router.push('/validation');
-  };
-
-  const handleSetTopic = () => {
-    router.push('/topic-setting');
-  };
-
-  const handleOpenRaisingHandsRate = () => {
-    router.push('/summary');
-  };
+  const handleOpenTreasure = () => router.push('/history');
+  const handleOpenTitle = () => router.push('/title');
+  const handleOpenNgWord = () => router.push('/validation');
+  const handleSetTopic = () => router.push('/topic-setting');
+  const handleOpenRaisingHandsRate = () => router.push('/summary');
 
   return (
-    <div className="zoo-container">
+    <div className="zoo-container" ref={containerRef} onScroll={handleScroll}>
+      {/* 2画面分の高さを確保する背景用ダミーコンテナ */}
+      <div className="zoo-scroll-content" />
+
+      {/* --- 全UI要素（すべて画面固定表示） --- */}
+      {/* 画面中央上部: スクロール誘導インジケーター */}
+      {showScrollHint && (
+        <div className="scroll-hint-banner">
+          ▲ 上にスクロールできます ▲
+        </div>
+      )}
+
       {/* 画面左上: ログアウトボタン */}
       <div className="top-left-area">
         <Button onClick={handleLogout} className="logout-btn">
@@ -126,9 +139,8 @@ export default function ZooHomePage() {
         )}
       </div>
 
-      {/* 画面右上エリア */}
+      {/* 画面右上: バナー＆教員メニュー */}
       <div className="top-right-area">
-        {/* 教師・児童共通: 横長画像 */}
         <div className="banner-wrapper">
           <img
             src="/images/contents/gacha-meter.png"
@@ -137,10 +149,8 @@ export default function ZooHomePage() {
           />
         </div>
 
-        {/* 教師のみ表示されるアイテム群 */}
         {isTeacher && (
           <div className="teacher-actions-column">
-            {/* セット1: NGワード登録 */}
             <div
               className="icon-button-wrapper"
               onClick={handleOpenNgWord}
@@ -157,7 +167,6 @@ export default function ZooHomePage() {
               </button>
             </div>
 
-            {/* セット2: 挙手率を見る */}
             <div
               className="icon-button-wrapper"
               onClick={handleOpenRaisingHandsRate}
@@ -177,7 +186,7 @@ export default function ZooHomePage() {
         )}
       </div>
 
-      {/* 画面下の真ん中（教員のみ）: お題を決めるボタン */}
+      {/* 画面中央下: お題を決めるボタン（教員のみ） */}
       {isTeacher && (
         <div className="bottom-center-area">
           <Button onClick={handleSetTopic} className="topic-btn-teacher">
@@ -186,16 +195,14 @@ export default function ZooHomePage() {
         </div>
       )}
 
-      {/* 下部エリア（左: 宝箱を見る / 右: 称号を見る） */}
+      {/* 画面最下部: 宝箱・称号を見るボタン */}
       <div className="bottom-bar">
-        {/* 左下: 宝箱を見るボタン */}
         <div className="bottom-left-area">
           <Button onClick={handleOpenTreasure} className="home-btn">
             宝箱を見る
           </Button>
         </div>
 
-        {/* 右下: 称号を見るボタン */}
         <div className="bottom-right-area">
           <Button onClick={handleOpenTitle} className="home-btn">
             称号を見る
