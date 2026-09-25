@@ -7,13 +7,9 @@ import './wait.css';
 
 type WaitMode = 'answer_submitted' | 'topic_cushion' | 'reaction_completed';
 
-const OBTAINED_GACHA_IMAGES = [
-  '/images/animals/title-example.png',
-  '/images/animals/title-example.png',
-  '/images/animals/title-example.png',
-  '/images/animals/title-example.png',
-  '/images/animals/title-example.png',
-];
+// 動物画像の格納フォルダパスとデフォルト画像ファイル名
+const IMAGE_DIR = '/images/animals/';
+const FALLBACK_FILE_NAME = 'title-example.png';
 
 interface WaitPageProps {
   isTeacher?: boolean;
@@ -47,12 +43,9 @@ function WaitContent({
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // =========================================================
-  // 1. 動物ガチャ画像のランダム選定 & お題クッション時の3秒タイマー
+  // 1. お題クッション時の3秒タイマー
   // =========================================================
   useEffect(() => {
-    const randomIndex = Math.floor(Math.random() * OBTAINED_GACHA_IMAGES.length);
-    setRandomImage(OBTAINED_GACHA_IMAGES[randomIndex]);
-
     // お題決定後のワンクッション（3秒後に回答入力画面へ）
     if (mode === 'topic_cushion') {
       const timer = setTimeout(() => {
@@ -63,50 +56,63 @@ function WaitContent({
   }, [mode, router]);
 
   // =========================================================
-  // 2. localStorage ('user-storage') の user_id から DB (public.users) を検索
+  // 2. sessionStorage ('user_info') からユーザー情報を取得 & 動物画像取得
   // =========================================================
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserDataAndAnimal = async () => {
       try {
-        // ① localStorage ('user-storage') から user_id を取得
-        const rawItem = localStorage.getItem('user-storage');
-        let localUserId: number | null = null;
+        // ① sessionStorage ('user_info') から保存済み情報を取得
+        const rawItem = sessionStorage.getItem('user_info');
 
-        if (rawItem) {
-          const parsed = JSON.parse(rawItem);
-          const id = parsed?.state?.user?.user_id ?? parsed?.user?.user_id ?? parsed?.user_id;
-          if (id) {
-            localUserId = Number(id);
-          }
-        }
-
-        if (!localUserId) {
-          console.warn('localStorage(user-storage) から user_id を検出できませんでした');
+        if (!rawItem) {
+          console.warn('sessionStorage(user_info) からユーザー情報を検出できませんでした');
+          setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
           setIsLoading(false);
           return;
         }
 
-        // ② user_id を使って public.users テーブルを検索
-        const { data, error: dbError } = await supabase
-          .from('users')
-          .select('class_id, role')
-          .eq('user_id', localUserId)
-          .single();
+        const userInfo = JSON.parse(rawItem);
+        const currentClassId = userInfo?.class_id ? Number(userInfo.class_id) : null;
+        const currentRole = userInfo?.role;
 
-        if (dbError) {
-          console.error('users テーブルからの取得に失敗:', dbError);
-        } else if (data) {
-          if (data.class_id) setClassId(data.class_id);
-          if (data.role === 'teacher') setIsTeacher(true);
+        // 教員判定を反映
+        if (currentRole === 'teacher') {
+          setIsTeacher(true);
+        }
+
+        // class_id が取得できた場合、状態にセットしてランダム動物画像を取得
+        if (currentClassId) {
+          setClassId(currentClassId);
+
+          // ② RPC: get_random_animal を呼び出してランダム動物画像を取得
+          const { data: animalData, error: rpcError } = await supabase.rpc(
+            'get_random_animal',
+            { p_class_id: currentClassId }
+          );
+
+          if (rpcError) {
+            console.error('get_random_animal RPC実行エラー:', rpcError);
+            setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+          } else if (animalData && animalData.length > 0 && animalData[0].item_image) {
+            // DBから得られたファイル名（例: "lion.png"）にフォルダパスを結合
+            const fileName = animalData[0].item_image;
+            setRandomImage(`${IMAGE_DIR}${fileName}`);
+          } else {
+            // 動物が未配置の場合などのフォールバック
+            setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+          }
+        } else {
+          setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
         }
       } catch (err) {
         console.error('予期せぬエラーが発生しました:', err);
+        setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserData();
+    fetchUserDataAndAnimal();
   }, []);
 
   // =========================================================
