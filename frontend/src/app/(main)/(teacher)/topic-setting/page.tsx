@@ -5,21 +5,11 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+
+// 共通型・定数のインポート
+import { Genre, GENRE_MAP, GENRES } from '@/types/reaction';
+
 import './topic-setting.css';
-
-// ジャンル型定義
-type Genre = '学校' | '日常' | '好きなもの' | '雑談' | 'ユニーク';
-
-// ジャンル名と genre_id のマッピング表
-const GENRE_MAP: Record<Genre, number> = {
-  学校: 1,
-  日常: 2,
-  好きなもの: 3,
-  雑談: 4,
-  ユニーク: 5,
-};
-
-const GENRES: Genre[] = ['学校', '日常', '好きなもの', '雑談', 'ユニーク'];
 
 // DBから取得するテンプレートの型定義
 type TemplateTopic = {

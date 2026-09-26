@@ -201,6 +201,73 @@ export default function ZooHomePage() {
 
   return (
     <div className="zoo-container" ref={containerRef} onScroll={handleScroll}>
+      {/* 画面右上: 1. 動的ガチャメーター (教員・児童問わず常に位置固定) */}
+      <div className="top-right-gacha-area">
+        <div className="gacha-meter-container-home">
+          <div className="gacha-meter-label">
+            <span>ガチャ</span>
+            <span>ゲージ</span>
+          </div>
+
+          <div className="gacha-meter-bar-outer">
+            <div
+              className="gacha-meter-bar-inner"
+              style={{ width: `${fillPercentage}%` }}
+            />
+          </div>
+
+          <div className="gacha-meter-eggs">
+            {[0, 1, 2].map((index) => (
+              <img
+                key={index}
+                src="/images/contents/gacha-egg.png"
+                alt="ガチャ卵"
+                className="gacha-egg-icon inactive"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 画面右上: 2. 教員メニュー (isTeacher が後から true になってもガチャメーターに影響を与えない) */}
+      {isTeacher && (
+        <div className="top-right-teacher-area">
+          <div className="teacher-actions-column">
+            <div
+              className="icon-button-wrapper"
+              onClick={handleOpenNgWord}
+              role="button"
+              tabIndex={0}
+            >
+              <img
+                src="/images/contents/NG-settings.png"
+                alt="NGワード"
+                className="overlap-icon"
+              />
+              <button type="button" className="NG-teacher-btn">
+                NGワード登録
+              </button>
+            </div>
+
+            <div
+              className="icon-button-wrapper"
+              onClick={handleOpenRaisingHandsRate}
+              role="button"
+              tabIndex={0}
+            >
+              <img
+                src="/images/contents/summary.png"
+                alt="公開率"
+                className="overlap-icon"
+              />
+              <button type="button" className="summary-teacher-btn">
+                公開率を見る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="zoo-scroll-content">
         {placedAnimals.map((animal) => {
           const leftPercent = (animal.x_coord / MAP_WIDTH) * 100;
@@ -241,69 +308,7 @@ export default function ZooHomePage() {
         )}
       </div>
 
-      {/* 画面右上: 動的ガチャメーター ＆ 教員メニュー */}
-      <div className="top-right-area">
-        <div className="gacha-meter-container">
-          <div className="gacha-meter-label">
-            <span>ガチャ</span>
-            <span>ゲージ</span>
-          </div>
 
-          <div className="gacha-meter-bar-outer">
-            <div
-              className="gacha-meter-bar-inner"
-              style={{ width: `${fillPercentage}%` }}
-            />
-          </div>
-
-          <div className="gacha-meter-eggs">
-            {[0, 1, 2].map((index) => (
-              <img
-                key={index}
-                src="/images/contents/gacha-egg.png"
-                alt="ガチャ卵"
-                className="gacha-egg-icon inactive" // ホーム画面では確定で半透明（引き不可）
-              />
-            ))}
-          </div>
-        </div>
-
-        {isTeacher && (
-          <div className="teacher-actions-column">
-            <div
-              className="icon-button-wrapper"
-              onClick={handleOpenNgWord}
-              role="button"
-              tabIndex={0}
-            >
-              <img
-                src="/images/contents/NG-settings.png"
-                alt="NGワード"
-                className="overlap-icon"
-              />
-              <button type="button" className="NG-teacher-btn">
-                NGワード登録
-              </button>
-            </div>
-
-            <div
-              className="icon-button-wrapper"
-              onClick={handleOpenRaisingHandsRate}
-              role="button"
-              tabIndex={0}
-            >
-              <img
-                src="/images/contents/summary.png"
-                alt="公開率"
-                className="overlap-icon"
-              />
-              <button type="button" className="summary-teacher-btn">
-                公開率を見る
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {/* 中央下: お題を決めるボタン */}
       {isTeacher && (
