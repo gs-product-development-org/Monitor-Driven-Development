@@ -8,7 +8,6 @@ import './wait.css';
 
 type WaitMode = 'answer_submitted' | 'topic_cushion' | 'reaction_completed';
 
-// 動物画像の格納フォルダパスとデフォルト画像ファイル名
 const IMAGE_DIR = '/images/animals/';
 const FALLBACK_FILE_NAME = 'title-example.png';
 
@@ -61,10 +60,13 @@ function WaitContent({
   // 2. class_id を元に RPC: get_random_animal から動的に動物画像を取得
   // =========================================================
   useEffect(() => {
-    // ユーザー情報の読み込み完了を待つ
+    // 同期処理の読み込み中、または classId がまだ準備できていない場合は待機
     if (isSyncLoading) return;
 
+    let isMounted = true;
+
     const fetchAnimalImage = async () => {
+      setIsImageLoading(true);
       try {
         if (classId) {
           const { data: animalData, error: rpcError } = await supabase.rpc(
@@ -72,31 +74,38 @@ function WaitContent({
             { p_class_id: classId }
           );
 
+          if (!isMounted) return;
+
           if (rpcError) {
             console.error('get_random_animal RPC実行エラー:', rpcError);
             setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
-          } else if (animalData && animalData.length > 0 && animalData[0].item_image) {
+          } else if (animalData && animalData.length > 0 && animalData[0]?.item_image) {
             const fileName = animalData[0].item_image;
             setRandomImage(`${IMAGE_DIR}${fileName}`);
           } else {
             setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
           }
         } else {
-          setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+          // classId が無い場合でもデフォルト画像を設定
+          if (isMounted) setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
         }
       } catch (err) {
         console.error('予期せぬエラーが発生しました:', err);
-        setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+        if (isMounted) setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
       } finally {
-        setIsImageLoading(false);
+        if (isMounted) setIsImageLoading(false);
       }
     };
 
     fetchAnimalImage();
+
+    return () => {
+      isMounted = false;
+    };
   }, [classId, isSyncLoading]);
 
   // =========================================================
-  // 3. 先生の操作: モーダルで「移動する」を押した時（親の navigateAll で全員一斉遷移）
+  // 3. 先生の操作: モーダルで「移動する」を押した時
   // =========================================================
   const handleConfirmTransition = async () => {
     setIsModalOpen(false);
@@ -104,7 +113,6 @@ function WaitContent({
     const destination =
       mode === 'reaction_completed' ? '/title-result' : '/anonymous-reveal';
 
-    // 共通コンポーネント経由で全員一斉遷移（先生本人の router.push も内包）
     await navigateAll(destination);
   };
 
@@ -146,6 +154,7 @@ function WaitContent({
     );
   };
 
+  // Sync情報の読み込み中、または画像の取得完了まではローディングを表示
   if (isSyncLoading || isImageLoading) {
     return <div className="wait-container">クラス情報を確認中...</div>;
   }

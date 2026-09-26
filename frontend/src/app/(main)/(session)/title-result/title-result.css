@@ -221,3 +221,47 @@
   border: 7px solid #525252;
   transform: translateY(-2px) scale(1.02);
 }
+
+/* ================= 非公開時：ジャンル称号一覧スタイル ================= */
+.genre-titles-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.genre-titles-subtext {
+  font-size: 16px;
+  color: #64748b;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.genre-title-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.genre-title-card {
+  background-color: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 16px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.genre-title-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #0f172a;
+}

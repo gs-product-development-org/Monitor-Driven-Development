@@ -747,7 +747,8 @@ function tryCreateDistribution(
 
 export function usePostDistribution(
   classId: number | null,
-  currentUserId: number | null  //class_idとuser_idを引数にして...
+  currentUserId: number | null,  //class_idとuser_idを引数にして...
+  topicId: number | null
 ) {
   const [
     assignedPosts,
@@ -772,7 +773,8 @@ export function usePostDistribution(
   useEffect(() => {
     if (
       classId === null ||
-      currentUserId === null
+      currentUserId === null ||
+      topicId === null
     ) {
       setAssignedPosts([]);
       setDistribution({});
@@ -837,6 +839,10 @@ export function usePostDistribution(
             .eq(
               'class_id',
               classId
+            )
+            .eq(
+              'topic_id',
+              topicId
             )
             .eq(
               'is_posted',
@@ -945,6 +951,7 @@ export function usePostDistribution(
   }, [
     classId,
     currentUserId,
+    topicId
   ]);
 
   return {

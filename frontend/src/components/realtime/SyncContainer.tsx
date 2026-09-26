@@ -8,11 +8,8 @@ interface SyncContextType {
   isTeacher: boolean;
   classId: number | null;
   isLoading: boolean;
-  // 全員を任意のページへ一斉遷移させる関数
   navigateAll: (destination: string) => Promise<void>;
-  // 任意のイベントとデータを全員に一斉配信する関数
   broadcastEvent: (event: string, payload?: any) => Promise<void>;
-  // 共有チャンネルの参照
   channel: ReturnType<typeof supabase.channel> | null;
 }
 
@@ -57,11 +54,11 @@ export default function SyncContainer({ children }: { children: React.ReactNode 
     } catch (err) {
       console.error('user_info のパースエラー:', err);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // ★ 読み込み完了
     }
   }, []);
 
-  // 2. class_id 確定後、アプリ全体で共通の Realtime チャンネルへ接続（接続維持）
+  // 2. class_id 確定後、Realtime チャンネルへ接続
   useEffect(() => {
     if (!classId) return;
 
@@ -86,7 +83,6 @@ export default function SyncContainer({ children }: { children: React.ReactNode 
     };
   }, [classId, router]);
 
-  // 3. 全員を一斉遷移させる関数
   const navigateAll = async (destination: string) => {
     if (channelRef.current) {
       await channelRef.current.send({
@@ -98,7 +94,6 @@ export default function SyncContainer({ children }: { children: React.ReactNode 
     router.push(destination);
   };
 
-  // 4. その他のイベント用一括配信関数
   const broadcastEvent = async (event: string, payload: any = {}) => {
     if (channelRef.current) {
       await channelRef.current.send({
@@ -108,6 +103,15 @@ export default function SyncContainer({ children }: { children: React.ReactNode 
       });
     }
   };
+
+  // ★ 修正ポイント: sessionStorageの確認が終わるまでは「読み込み中」を表示し、子画面を描画させない
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        読み込み中...
+      </div>
+    );
+  }
 
   return (
     <SyncContext.Provider

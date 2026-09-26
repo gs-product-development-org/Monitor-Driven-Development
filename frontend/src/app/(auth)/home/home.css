@@ -1,14 +1,14 @@
 /* 画面全体のコンテナ（スクロール領域） */
 .zoo-container {
   position: relative;
-  width: 100vw;
+  /* 100vw から 100% に変更（スクロールバーによる幅の膨張を防ぐ） */
+  width: 100%;
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
-
 /* 縦2画面分 (200vh) のスクロール用背景コンテンツ */
 .zoo-scroll-content {
   position: relative;
@@ -58,32 +58,46 @@
   text-align: center;
 }
 
-/* 右上: バナー＆教員メニュー (縦並びを明示し、幅を自動調整) */
-.top-right-area {
+/* --- ガチャメーター専用エリア (常に固定位置) --- */
+.top-right-gacha-area {
   position: fixed;
-  top: 24px;
+  top: 24px !important;    /* 厳格に上端位置を固定 */
+  right: 24px !important;  /* 厳格に右端位置を固定 */
+  z-index: 100;            /* 他の要素より確実に前に出す */
+  width: max-content;
+  
+  /* 描画タイミングのバグを回避するためのGPUアクセラレーション */
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+/* 教員用ボタンエリア */
+.top-right-teacher-area {
+  position: fixed;
+  top: 110px; /* ガチャメーターの高さ（約70px）＋余白に合わせて調整 */
   right: 24px;
-  display: flex;
-  flex-direction: column; /* 要素を上から下に縦並び */
-  align-items: flex-end;   /* 右寄せ */
-  gap: 16px;              /* ガチャメーターと教員ボタンの間の余白 */
-  z-index: 10;
-  width: max-content;     /* 中身に合わせて横幅を固定し、横潰れを防止 */
+  z-index: 20;
+  width: max-content;
 }
 
 /* ガチャメーターUI本体 */
-.gacha-meter-container {
+.gacha-meter-container-home {
   display: flex;
   align-items: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px); /* iOS/Safari対策 */
   padding: 10px 18px;
   border-radius: 40px;
   border: 3px solid #FFFFFF;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-  box-sizing: border-box; /* パディングによるサイズ崩れを防止 */
-  width: auto;            /* 横幅が伸び切らないように自動化 */
+  box-sizing: border-box;
+  
+  /* --- 修正ポイント --- */
+  width: max-content;            /* auto ではなく max-content で幅の縮みを固く防止 */
+  transform: translateZ(0);      /* レンダリング計算のレイアウトシフトバグを防止 */
+  will-change: transform;        /* 描画の優先度を上げて切り替わり時のサイズ崩れを防ぐ */
 }
 
 .gacha-meter-label {
