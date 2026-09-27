@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSync } from '@/components/realtime/SyncContainer';
 import './all-posts.css';
 
 // 共通の背景卵画像パス
@@ -21,21 +22,26 @@ const DUMMY_ANSWERS: AnswerItem[] = Array.from({ length: 24 }).map((_, index) =>
 
 export default function AnswersListPage() {
   const router = useRouter();
+  const { isTeacher: syncIsTeacher, navigateAll } = useSync();
 
   const [selectedGenre] = useState<string>('「こんな朝ごはんは嫌だ」どんな朝ごはん？');
   const [answers] = useState<AnswerItem[]>(DUMMY_ANSWERS);
 
-  // ★ 教師フラグ（実際のシステムに合わせて認証情報やprops等から設定してください）
-  const [isTeacher] = useState<boolean>(true);
+  // SyncContainer の isTeacher を優先使用
+  const isTeacher = syncIsTeacher;
 
   // 1行に表示する「投稿データ」の数は最大3つ
   const POSTS_PER_ROW = 3;
   // 全投稿数から必要な行数を計算
   const totalRows = Math.ceil(answers.length / POSTS_PER_ROW);
 
-  // ★ ガチャ画面へ移動するハンドラー
-  const handleGoToGacha = () => {
-    router.push('/gacha'); // 実際のガチャ画面のパスに合わせて変更してください
+  // ★ ガチャ画面へ全員一斉に移動するハンドラー
+  const handleGoToGacha = async () => {
+    if (navigateAll) {
+      await navigateAll('/gacha');
+    } else {
+      router.push('/gacha');
+    }
   };
 
   return (

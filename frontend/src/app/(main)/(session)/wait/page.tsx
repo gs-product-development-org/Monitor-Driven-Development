@@ -13,7 +13,6 @@ const IMAGE_DIR = '/images/animals/';
 const FALLBACK_FILE_NAME = 'title-example.png';
 
 interface WaitPageProps {
-  isTeacher?: boolean;
   waitingCount?: number;
   totalCount?: number;
 }
@@ -27,23 +26,28 @@ export default function WaitPage(props: WaitPageProps) {
 }
 
 function WaitContent({
-  isTeacher: initialIsTeacher,
   waitingCount = 18,
   totalCount = 30,
 }: WaitPageProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const mode = (searchParams.get('mode') as WaitMode) || 'answer_submitted';
 
-  // SyncContainer からユーザー情報・Realtime機能を取得
-  const { isTeacher: syncIsTeacher, classId, isLoading: isSyncLoading, navigateAll } = useSync();
+  const mode =
+    (searchParams.get('mode') as WaitMode) || 'answer_submitted';
 
-  // Propsの指定があればそれを優先し、無ければSyncContainerの判定を使用
-  const isTeacher = initialIsTeacher ?? syncIsTeacher;
+  // =========================================================
+  // SyncContainerからユーザー情報・Realtime機能を取得
+  // =========================================================
+  const {
+    isTeacher,
+    classId,
+    isLoading: isSyncLoading,
+    updateSessionPhase,
+  } = useSync();
 
-  const [randomImage, setRandomImage] = useState<string>('');
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [isImageLoading, setIsImageLoading] = useState<boolean>(true);
+  const [randomImage, setRandomImage] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImageLoading, setIsImageLoading] = useState(true);
 
   // =========================================================
   // 1. お題クッション時の3秒タイマー
@@ -53,40 +57,64 @@ function WaitContent({
       const timer = setTimeout(() => {
         router.push('/answer');
       }, 3000);
+
       return () => clearTimeout(timer);
     }
   }, [mode, router]);
 
   // =========================================================
-  // 2. class_id を元に RPC: get_random_animal から動的に動物画像を取得
+  // 2. class_idを元にRPC:
+  //    get_random_animalから動物画像を取得
   // =========================================================
   useEffect(() => {
-    // ユーザー情報の読み込み完了を待つ
     if (isSyncLoading) return;
 
     const fetchAnimalImage = async () => {
       try {
         if (classId) {
-          const { data: animalData, error: rpcError } = await supabase.rpc(
-            'get_random_animal',
-            { p_class_id: classId }
-          );
+          const { data: animalData, error: rpcError } =
+            await supabase.rpc('get_random_animal', {
+              p_class_id: classId,
+            });
 
           if (rpcError) {
-            console.error('get_random_animal RPC実行エラー:', rpcError);
-            setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
-          } else if (animalData && animalData.length > 0 && animalData[0].item_image) {
+            console.error(
+              'get_random_animal RPC実行エラー:',
+              rpcError
+            );
+
+            setRandomImage(
+              `${IMAGE_DIR}${FALLBACK_FILE_NAME}`
+            );
+          } else if (
+            animalData &&
+            animalData.length > 0 &&
+            animalData[0].item_image
+          ) {
             const fileName = animalData[0].item_image;
-            setRandomImage(`${IMAGE_DIR}${fileName}`);
+
+            setRandomImage(
+              `${IMAGE_DIR}${fileName}`
+            );
           } else {
-            setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+            setRandomImage(
+              `${IMAGE_DIR}${FALLBACK_FILE_NAME}`
+            );
           }
         } else {
-          setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+          setRandomImage(
+            `${IMAGE_DIR}${FALLBACK_FILE_NAME}`
+          );
         }
       } catch (err) {
-        console.error('予期せぬエラーが発生しました:', err);
-        setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+        console.error(
+          '予期せぬエラーが発生しました:',
+          err
+        );
+
+        setRandomImage(
+          `${IMAGE_DIR}${FALLBACK_FILE_NAME}`
+        );
       } finally {
         setIsImageLoading(false);
       }
@@ -96,18 +124,39 @@ function WaitContent({
   }, [classId, isSyncLoading]);
 
   // =========================================================
-  // 3. 先生の操作: モーダルで「移動する」を押した時（親の navigateAll で全員一斉遷移）
+  // 3. 先生の操作
+  //
+  // answer_submitted
+  //   → REACTION
+  //
+  // reaction_completed
+  //   → TITLE_RESULT
+  //
+  // DBのphaseを変更すると、
+  // SyncContainerのRealtimeがそれを検知して
+  // 全員を対応するページへ遷移させる
   // =========================================================
   const handleConfirmTransition = async () => {
     setIsModalOpen(false);
 
-    const destination =
-      mode === 'reaction_completed' ? '/title-result' : '/anonymous-reveal';
+    try {
+      const nextPhase =
+        mode === 'reaction_completed'
+          ? 'TITLE_RESULT'
+          : 'REACTION';
 
-    // 共通コンポーネント経由で全員一斉遷移（先生本人の router.push も内包）
-    await navigateAll(destination);
+      await updateSessionPhase(nextPhase);
+    } catch (error) {
+      console.error(
+        'セッションフェーズ更新エラー:',
+        error
+      );
+    }
   };
 
+  // =========================================================
+  // 4. 待機画面メッセージ
+  // =========================================================
   const renderMessage = () => {
     if (mode === 'topic_cushion') {
       return (
@@ -118,6 +167,7 @@ function WaitContent({
         </>
       );
     }
+
     return (
       <>
         みんなが終わるのを待ってね！
@@ -127,6 +177,9 @@ function WaitContent({
     );
   };
 
+  // =========================================================
+  // 5. モーダルメッセージ
+  // =========================================================
   const renderModalText = () => {
     if (mode === 'reaction_completed') {
       return (
@@ -137,6 +190,7 @@ function WaitContent({
         </>
       );
     }
+
     return (
       <>
         「移動する」を押すと、児童全員とあなたの端末で
@@ -146,10 +200,20 @@ function WaitContent({
     );
   };
 
+  // =========================================================
+  // 6. Loading
+  // =========================================================
   if (isSyncLoading || isImageLoading) {
-    return <div className="wait-container">クラス情報を確認中...</div>;
+    return (
+      <div className="wait-container">
+        クラス情報を確認中...
+      </div>
+    );
   }
 
+  // =========================================================
+  // 7. 画面
+  // =========================================================
   return (
     <div className="wait-container">
       <div className="wait-image-container">
@@ -163,28 +227,44 @@ function WaitContent({
       </div>
 
       <div className="wait-message-container">
-        <p className="wait-message-text">{renderMessage()}</p>
+        <p className="wait-message-text">
+          {renderMessage()}
+        </p>
       </div>
 
-      {(mode === 'answer_submitted' || mode === 'reaction_completed') && isTeacher && (
-        <div className="teacher-control-area">
-          <div className="waiting-counter">
-            待機中: <span className="count-highlight">{waitingCount}</span> / {totalCount}
-          </div>
-          <button
-            type="button"
-            className="transition-btn"
-            onClick={() => setIsModalOpen(true)}
-          >
-            {mode === 'reaction_completed' ? '称号・一覧画面へ' : 'リアクション画面へ'}
-          </button>
-        </div>
-      )}
+      {(mode === 'answer_submitted' ||
+        mode === 'reaction_completed') &&
+        isTeacher && (
+          <div className="teacher-control-area">
+            <div className="waiting-counter">
+              待機中:{' '}
+              <span className="count-highlight">
+                {waitingCount}
+              </span>{' '}
+              / {totalCount}
+            </div>
 
+            <button
+              type="button"
+              className="transition-btn"
+              onClick={() => setIsModalOpen(true)}
+            >
+              {mode === 'reaction_completed'
+                ? '称号・一覧画面へ'
+                : 'リアクション画面へ'}
+            </button>
+          </div>
+        )}
+
+      {/* =====================================================
+          確認モーダル
+      ===================================================== */}
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-card">
-            <p className="modal-subtext">{renderModalText()}</p>
+            <p className="modal-subtext">
+              {renderModalText()}
+            </p>
 
             <div className="modal-buttons-row">
               <button
@@ -194,6 +274,7 @@ function WaitContent({
               >
                 いいえ
               </button>
+
               <button
                 type="button"
                 onClick={handleConfirmTransition}
@@ -208,3 +289,4 @@ function WaitContent({
     </div>
   );
 }
+

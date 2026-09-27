@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './answer.css';
 
 // sessionStorage 保存用キー名定数
@@ -35,7 +34,9 @@ type TopicInfo = {
 
 export default function TopicStockPage() {
   const router = useRouter();
-  const { user } = useRequireAuth(); // ユーザー情報の取得
+
+  // ユーザー情報
+  const [userInfo, setUserInfo] = useState<any>(null);
 
   const [step, setStep] = useState<'input' | 'action'>('input');
 
@@ -62,118 +63,212 @@ export default function TopicStockPage() {
   const chatAreaRef = useRef<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState<boolean>(false);
 
-  // ★初期化：sessionStorage に無ければ RPC `get_topic` から取得して一律キャッシュ化
+  // ユーザー情報をsessionStorageから取得
+  useEffect(() => {
+    const storedUser = sessionStorage.getItem('user_info');
+
+    if (!storedUser) {
+      console.error('user_info がありません');
+      return;
+    }
+
+    try {
+      setUserInfo(JSON.parse(storedUser));
+    } catch (error) {
+      console.error('user_info の読み込みに失敗:', error);
+    }
+  }, []);
+
+  // 現在のお題を取得
+  //
+  // お題の正解データは
+  // class_sessions.topic_id
+  // ↓
+  // topics.topic_id
+  //
+  // の順番で取得する。
+  //
+  // sessionStorage の current_work_topic は
+  // 現在のお題を決めるためには使用せず、
+  // DBから取得したお題のキャッシュとして更新する。
   useEffect(() => {
     const loadTopic = async () => {
-      // 1. まず sessionStorage から復元を試みる
-      const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.topic_id && parsed.topic_content) {
-            setCurrentTopicInfo({
-              topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
-              class_id: parsed.class_id ? Number(parsed.class_id) : null,
-              genre_name: parsed.genre_name || 'お題',
-              topic_content: parsed.topic_content || '',
-            });
-            return; // キャッシュがあればDBアクセスせず終了
-          }
-        } catch (e) {
-          console.error('sessionStorage の読み込みエラー:', e);
-        }
+      const storedUser = sessionStorage.getItem('user_info');
+
+      if (!storedUser) {
+        console.error('user_info がありません');
+        return;
       }
 
-      // 2. キャッシュがない場合は DB（RPC: get_topic）から最新お題を取得
+      let parsedUser: any;
+
       try {
-        let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
-        if (!classId) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          classId = Number(sessionData?.session?.user?.user_metadata?.class_id);
-        }
+        parsedUser = JSON.parse(storedUser);
+      } catch (error) {
+        console.error('user_info の解析に失敗:', error);
+        return;
+      }
 
-        if (!classId) {
-          console.error('クラスIDを取得できませんでした');
+      const classId = Number(parsedUser?.class_id);
+
+      if (!classId) {
+        console.error('class_id を取得できませんでした');
+        return;
+      }
+
+      try {
+        // ① 現在のclass_sessionsを取得
+        const {
+          data: sessionData,
+          error: sessionError,
+        } = await supabase
+          .from('class_sessions')
+          .select(
+            'session_id, class_id, topic_id, phase, updated_at'
+          )
+          .eq('class_id', classId)
+          .order('session_id', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (sessionError) {
+          console.error(
+            'class_sessions の取得に失敗:',
+            sessionError
+          );
           return;
         }
 
-        // RPC 関数の呼び出し
-        const { data, error } = await supabase.rpc('get_topic', {
-          p_class_id: classId,
-        });
-
-        if (error) {
-          console.error('get_topic の呼び出しに失敗:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-            fullError: error,
-          });
+        if (!sessionData) {
+          console.error('class_sessions が見つかりません');
           return;
         }
 
-        const latestTopic = Array.isArray(data) && data.length > 0 ? data[0] : null;
+        const topicId = Number(sessionData.topic_id);
 
-        if (latestTopic) {
-          const resolvedGenreName =
-            latestTopic.genre_name ||
-            (latestTopic.genre_id ? GENRE_ID_TO_NAME[Number(latestTopic.genre_id)] : 'お題');
-
-          const topicData = {
-            topic_id: Number(latestTopic.topic_id),
-            class_id: Number(latestTopic.class_id),
-            genre_name: resolvedGenreName,
-            topic_content: latestTopic.topic_content,
-          };
-
-          // State を更新
-          setCurrentTopicInfo(topicData);
-
-          // 次回の表示や別画面用に sessionStorage へ保存
-          sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(topicData));
-        } else {
-          console.warn('該当するクラスのお題が見つかりませんでした');
+        if (!topicId) {
+          console.error(
+            'class_sessions に topic_id が設定されていません'
+          );
+          return;
         }
-      } catch (err) {
-        console.error('お題取得中に例外エラーが発生:', err);
+
+        console.log('現在のclass_session:', sessionData);
+        console.log('現在のお題のtopic_id:', topicId);
+
+        // ② class_sessions.topic_id のお題を取得
+        const {
+          data: topicData,
+          error: topicError,
+        } = await supabase
+          .from('topics')
+          .select(`
+            topic_id,
+            class_id,
+            genre_id,
+            topic_content,
+            created_at
+          `)
+          .eq('topic_id', topicId)
+          .eq('class_id', classId)
+          .maybeSingle();
+
+        if (topicError) {
+          console.error(
+            'topics の取得に失敗:',
+            topicError
+          );
+          return;
+        }
+
+        if (!topicData) {
+          console.error(
+            `topic_id=${topicId} のお題が見つかりません`
+          );
+          return;
+        }
+
+        const resolvedGenreName =
+          GENRE_ID_TO_NAME[Number(topicData.genre_id)] || 'お題';
+
+        const topicInfo: TopicInfo = {
+          topic_id: Number(topicData.topic_id),
+          class_id: Number(topicData.class_id),
+          genre_name: resolvedGenreName,
+          topic_content: topicData.topic_content,
+        };
+
+        console.log('表示するお題:', topicInfo);
+
+        // ③ Stateを更新
+        setCurrentTopicInfo(topicInfo);
+
+        // ④ sessionStorageはキャッシュとして更新
+        sessionStorage.setItem(
+          CURRENT_WORK_TOPIC_KEY,
+          JSON.stringify(topicInfo)
+        );
+      } catch (error) {
+        console.error(
+          'お題取得中に例外エラーが発生:',
+          error
+        );
       }
     };
 
     loadTopic();
-  }, [user]);
+  }, []);
 
   const checkScrollable = () => {
     const el = chatAreaRef.current;
+
     if (!el) return;
+
     const hasScroll = el.scrollHeight > el.clientHeight;
-    const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
+
+    const isAtBottom =
+      el.scrollTop + el.clientHeight >= el.scrollHeight - 5;
+
     setCanScroll(hasScroll && !isAtBottom);
   };
 
   useEffect(() => {
     checkScrollable();
+
     window.addEventListener('resize', checkScrollable);
-    return () => window.removeEventListener('resize', checkScrollable);
+
+    return () => {
+      window.removeEventListener('resize', checkScrollable);
+    };
   }, [stockList, step]);
 
   const handleAddStock = () => {
     const trimmed = inputText.trim();
+
     if (!trimmed) {
       alert('回答を入力してください');
       return;
     }
 
     const newId = Date.now().toString();
-    const newStock: StockTopic = { id: newId, text: trimmed };
 
-    setStockList((prevList) => [...prevList, newStock]);
+    const newStock: StockTopic = {
+      id: newId,
+      text: trimmed,
+    };
+
+    setStockList((prevList) => [
+      ...prevList,
+      newStock,
+    ]);
+
     setInputText('');
   };
 
   // フェーズ1の「確定」ボタン押下時
   const handleFirstConfirm = () => {
     if (!selectedTopicId) return;
+
     setIsModalOpen(true);
   };
 
@@ -190,33 +285,52 @@ export default function TopicStockPage() {
 
   // 最終確定処理
   const handleActionModalSubmit = async () => {
-    const selectedTopic = stockList.find((item) => item.id === selectedTopicId);
-    if (!selectedTopic || !pendingAction || isSubmitting) return;
+    const selectedTopic = stockList.find(
+      (item) => item.id === selectedTopicId
+    );
+
+    if (
+      !selectedTopic ||
+      !pendingAction ||
+      isSubmitting
+    ) {
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
-      let userId: number | null = (user as any)?.user_id ? Number((user as any).user_id) : null;
-      let classId: number | null = currentTopicInfo.class_id ?? ((user as any)?.class_id ? Number((user as any).class_id) : null);
+      const userId = Number(userInfo?.user_id);
+      const classId =
+        currentTopicInfo.class_id ??
+        Number(userInfo?.class_id);
 
       if (!userId || !classId) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const sessionUser = sessionData?.session?.user;
-        if (sessionUser) {
-          if (!userId) userId = Number(sessionUser.user_metadata?.user_id || sessionUser.id);
-          if (!classId) classId = Number(sessionUser.user_metadata?.class_id);
-        }
-      }
+        alert(
+          'ユーザー情報またはクラス情報が取得できませんでした。再ログインしてください。'
+        );
 
-      if (!userId || !classId) {
-        alert('ユーザー情報またはクラス情報が取得できませんでした。再ログインしてください。');
         setIsSubmitting(false);
         return;
       }
 
-      const isPosted = pendingAction === 'announce'; // announce なら true, chest なら false
+      // topic_id が取得できていない状態では投稿させない
+      if (!currentTopicInfo.topic_id) {
+        alert(
+          '現在のお題情報が取得できていません。ページを再読み込みしてください。'
+        );
 
-      const { data, error } = await supabase.rpc('create_post', {
+        setIsSubmitting(false);
+        return;
+      }
+
+      const isPosted =
+        pendingAction === 'announce';
+
+      const {
+        data,
+        error,
+      } = await supabase.rpc('create_post', {
         p_class_id: classId,
         p_user_id: userId,
         p_topic_id: currentTopicInfo.topic_id,
@@ -225,25 +339,43 @@ export default function TopicStockPage() {
       });
 
       if (error) {
-        console.error('投稿の保存エラー:', error);
-        alert(`回答の保存に失敗しました: ${error.message}`);
+        console.error(
+          '投稿の保存エラー:',
+          error
+        );
+
+        alert(
+          `回答の保存に失敗しました: ${error.message}`
+        );
+
         setIsSubmitting(false);
         return;
       }
 
       console.log('投稿完了:', data);
+
       setPendingAction(null);
 
       // 待機画面へ移動
       router.push('/wait');
     } catch (err) {
-      console.error('処理例外エラー:', err);
-      alert('予期せぬエラーが発生しました');
+      console.error(
+        '処理例外エラー:',
+        err
+      );
+
+      alert(
+        '予期せぬエラーが発生しました'
+      );
+
       setIsSubmitting(false);
     }
   };
 
-  const currentSelectedTopic = stockList.find((item) => item.id === selectedTopicId);
+  const currentSelectedTopic =
+    stockList.find(
+      (item) => item.id === selectedTopicId
+    );
 
   return (
     <div className="stock-container">
@@ -272,14 +404,24 @@ export default function TopicStockPage() {
                   </p>
 
                   {stockList.map((item) => {
-                    const isSelected = item.id === selectedTopicId;
+                    const isSelected =
+                      item.id === selectedTopicId;
+
                     return (
                       <div
                         key={item.id}
-                        onClick={() => setSelectedTopicId(item.id)}
-                        className={`chat-bubble ${isSelected ? 'selected' : ''}`}
+                        onClick={() =>
+                          setSelectedTopicId(item.id)
+                        }
+                        className={`chat-bubble ${
+                          isSelected
+                            ? 'selected'
+                            : ''
+                        }`}
                       >
-                        <p className="chat-text">{item.text}</p>
+                        <p className="chat-text">
+                          {item.text}
+                        </p>
                       </div>
                     );
                   })}
@@ -304,13 +446,18 @@ export default function TopicStockPage() {
               <input
                 type="text"
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={(e) =>
+                  setInputText(e.target.value)
+                }
                 placeholder="回答を入力して書き溜める..."
                 className="stock-input-box"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAddStock();
+                  if (e.key === 'Enter') {
+                    handleAddStock();
+                  }
                 }}
               />
+
               <button
                 type="button"
                 onClick={handleAddStock}
@@ -326,7 +473,12 @@ export default function TopicStockPage() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 >
-                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <line
+                    x1="22"
+                    y1="2"
+                    x2="11"
+                    y2="13"
+                  />
                   <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </button>
@@ -352,8 +504,11 @@ export default function TopicStockPage() {
               alt="決定お題ボード"
               className="action-illustration"
             />
+
             <div className="action-topic-preview">
-              <p className="preview-text">{currentSelectedTopic?.text}</p>
+              <p className="preview-text">
+                {currentSelectedTopic?.text}
+              </p>
             </div>
           </div>
 
@@ -361,15 +516,20 @@ export default function TopicStockPage() {
             <button
               type="button"
               className="action-toggle-btn"
-              onClick={() => handleActionSelect('chest')}
+              onClick={() =>
+                handleActionSelect('chest')
+              }
               disabled={isSubmitting}
             >
               宝箱にしまう
             </button>
+
             <button
               type="button"
               className="action-toggle-btn action-toggle-btn-primary"
-              onClick={() => handleActionSelect('announce')}
+              onClick={() =>
+                handleActionSelect('announce')
+              }
               disabled={isSubmitting}
             >
               公開する
@@ -379,20 +539,29 @@ export default function TopicStockPage() {
           {pendingAction && (
             <div className="modal-overlay">
               <div className="modal-card">
-                <p className="modal-message">回答</p>
+                <p className="modal-message">
+                  回答
+                </p>
+
                 <p className="modal-message-topic">
-                  「<span className="modal-topic-highlight">{currentSelectedTopic?.text}</span>」
+                  「
+                  <span className="modal-topic-highlight">
+                    {currentSelectedTopic?.text}
+                  </span>
+                  」
                 </p>
 
                 <p className="modal-subtext">
                   {pendingAction === 'chest' ? (
                     <>
-                      この回答を自分だけの宝箱にしまいますか？<br />
+                      この回答を自分だけの宝箱にしまいますか？
+                      <br />
                       しまった回答は後から確認できるよ
                     </>
                   ) : (
                     <>
-                      この回答を公開しますか？<br />
+                      この回答を公開しますか？
+                      <br />
                       誰が公開したかはわからないよ
                     </>
                   )}
@@ -401,15 +570,20 @@ export default function TopicStockPage() {
                 <div className="modal-buttons-row">
                   <button
                     type="button"
-                    onClick={() => setPendingAction(null)}
+                    onClick={() =>
+                      setPendingAction(null)
+                    }
                     className="modal-btn modal-btn-cancel"
                     disabled={isSubmitting}
                   >
                     いいえ
                   </button>
+
                   <button
                     type="button"
-                    onClick={handleActionModalSubmit}
+                    onClick={
+                      handleActionModalSubmit
+                    }
                     className="modal-btn modal-btn-confirm"
                     disabled={isSubmitting}
                   >
@@ -430,27 +604,40 @@ export default function TopicStockPage() {
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal-card">
-            <p className="modal-message">回答</p>
+            <p className="modal-message">
+              回答
+            </p>
+
             <p className="modal-message-topic">
-              「<span className="modal-topic-highlight">{currentSelectedTopic?.text}</span>」
+              「
+              <span className="modal-topic-highlight">
+                {currentSelectedTopic?.text}
+              </span>
+              」
             </p>
 
             <p className="modal-subtext">
-              「これにする」を押すと<br />
+              「これにする」を押すと
+              <br />
               もう回答の変更はできません
             </p>
 
             <div className="modal-buttons-row">
               <button
                 type="button"
-                onClick={() => setIsModalOpen(false)}
+                onClick={() =>
+                  setIsModalOpen(false)
+                }
                 className="modal-btn modal-btn-cancel"
               >
                 いいえ
               </button>
+
               <button
                 type="button"
-                onClick={handlePhase1ModalSubmit}
+                onClick={
+                  handlePhase1ModalSubmit
+                }
                 className="modal-btn modal-btn-confirm"
               >
                 これにする
