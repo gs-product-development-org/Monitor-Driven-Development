@@ -59,6 +59,7 @@
   padding-top: 150px; /* お題カードとの重なりを考慮した余白 */
   padding-bottom: 100px; /* 下部ボタンと被らないように少し広めに確保 */
   box-sizing: border-box;
+  scrollbar-width: none;
 }
 
 /* 画像を敷き詰めるグリッド配置 */

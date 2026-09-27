@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useSync } from '@/components/realtime/SyncContainer';
 import './wait.css';
 
 type WaitMode = 'answer_submitted' | 'topic_cushion' | 'reaction_completed';
 
-// 動物画像の格納フォルダパスとデフォルト画像ファイル名
 const IMAGE_DIR = '/images/animals/';
 const FALLBACK_FILE_NAME = 'title-example.png';
 
@@ -17,10 +17,10 @@ interface WaitPageProps {
   totalCount?: number;
 }
 
-export default function WaitPage() {
+export default function WaitPage(props: WaitPageProps) {
   return (
     <Suspense fallback={<div className="wait-container">Loading...</div>}>
-      <WaitContent />
+      <WaitContent {...props} />
     </Suspense>
   );
 }
@@ -34,19 +34,20 @@ function WaitContent({
   const searchParams = useSearchParams();
   const mode = (searchParams.get('mode') as WaitMode) || 'answer_submitted';
 
-  const [isTeacher, setIsTeacher] = useState<boolean>(initialIsTeacher ?? false);
-  const [classId, setClassId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  // SyncContainer からユーザー情報・Realtime機能を取得
+  const { isTeacher: syncIsTeacher, classId, isLoading: isSyncLoading, navigateAll } = useSync();
+
+  // Propsの指定があればそれを優先し、無ければSyncContainerの判定を使用
+  const isTeacher = initialIsTeacher ?? syncIsTeacher;
+
   const [randomImage, setRandomImage] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [isImageLoading, setIsImageLoading] = useState<boolean>(true);
 
   // =========================================================
   // 1. お題クッション時の3秒タイマー
   // =========================================================
   useEffect(() => {
-    // お題決定後のワンクッション（3秒後に回答入力画面へ）
     if (mode === 'topic_cushion') {
       const timer = setTimeout(() => {
         router.push('/answer');
@@ -56,95 +57,55 @@ function WaitContent({
   }, [mode, router]);
 
   // =========================================================
-  // 2. sessionStorage ('user_info') からユーザー情報を取得 & 動物画像取得
+  // 2. class_id を元に RPC: get_random_animal から動的に動物画像を取得
   // =========================================================
   useEffect(() => {
-    const fetchUserDataAndAnimal = async () => {
+    // 同期処理の読み込み中、または classId がまだ準備できていない場合は待機
+    if (isSyncLoading) return;
+
+    let isMounted = true;
+
+    const fetchAnimalImage = async () => {
+      setIsImageLoading(true);
       try {
-        // ① sessionStorage ('user_info') から保存済み情報を取得
-        const rawItem = sessionStorage.getItem('user_info');
-
-        if (!rawItem) {
-          console.warn('sessionStorage(user_info) からユーザー情報を検出できませんでした');
-          setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
-          setIsLoading(false);
-          return;
-        }
-
-        const userInfo = JSON.parse(rawItem);
-        const currentClassId = userInfo?.class_id ? Number(userInfo.class_id) : null;
-        const currentRole = userInfo?.role;
-
-        // 教員判定を反映
-        if (currentRole === 'teacher') {
-          setIsTeacher(true);
-        }
-
-        // class_id が取得できた場合、状態にセットしてランダム動物画像を取得
-        if (currentClassId) {
-          setClassId(currentClassId);
-
-          // ② RPC: get_random_animal を呼び出してランダム動物画像を取得
+        if (classId) {
           const { data: animalData, error: rpcError } = await supabase.rpc(
             'get_random_animal',
-            { p_class_id: currentClassId }
+            { p_class_id: classId }
           );
+
+          if (!isMounted) return;
 
           if (rpcError) {
             console.error('get_random_animal RPC実行エラー:', rpcError);
             setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
-          } else if (animalData && animalData.length > 0 && animalData[0].item_image) {
-            // DBから得られたファイル名（例: "lion.png"）にフォルダパスを結合
+          } else if (animalData && animalData.length > 0 && animalData[0]?.item_image) {
             const fileName = animalData[0].item_image;
             setRandomImage(`${IMAGE_DIR}${fileName}`);
           } else {
-            // 動物が未配置の場合などのフォールバック
             setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
           }
         } else {
-          setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+          // classId が無い場合でもデフォルト画像を設定
+          if (isMounted) setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
         }
       } catch (err) {
         console.error('予期せぬエラーが発生しました:', err);
-        setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
+        if (isMounted) setRandomImage(`${IMAGE_DIR}${FALLBACK_FILE_NAME}`);
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsImageLoading(false);
       }
     };
 
-    fetchUserDataAndAnimal();
-  }, []);
-
-  // =========================================================
-  // 3. class_id 確定後、そのクラス専用の Realtime チャンネルへ接続
-  // =========================================================
-  useEffect(() => {
-    if (!classId) return;
-
-    // クラスIDに基づいたチャンネルを作成（例: classroom_1）
-    const channel = supabase.channel(`classroom_${classId}`);
-    channelRef.current = channel;
-
-    channel
-      .on(
-        'broadcast',
-        { event: 'PAGE_TRANSITION' },
-        (payload: { payload: { destination: string } }) => {
-          if (payload.payload?.destination) {
-            router.push(payload.payload.destination);
-          }
-        }
-      )
-      .subscribe();
+    fetchAnimalImage();
 
     return () => {
-      supabase.removeChannel(channel);
-      channelRef.current = null;
+      isMounted = false;
     };
-  }, [classId, router]);
+  }, [classId, isSyncLoading]);
 
   // =========================================================
-  // 4. 先生の操作: モーダルで「移動する」を押した時（一斉遷移イベント送信）
+  // 3. 先生の操作: モーダルで「移動する」を押した時
   // =========================================================
   const handleConfirmTransition = async () => {
     setIsModalOpen(false);
@@ -152,17 +113,7 @@ function WaitContent({
     const destination =
       mode === 'reaction_completed' ? '/title-result' : '/anonymous-reveal';
 
-    // 接続済みのチャンネルから画面遷移指示を Broadcast 送信
-    if (channelRef.current) {
-      await channelRef.current.send({
-        type: 'broadcast',
-        event: 'PAGE_TRANSITION',
-        payload: { destination },
-      });
-    }
-
-    // 先生本人の画面も遷移
-    router.push(destination);
+    await navigateAll(destination);
   };
 
   const renderMessage = () => {
@@ -203,7 +154,8 @@ function WaitContent({
     );
   };
 
-  if (isLoading) {
+  // Sync情報の読み込み中、または画像の取得完了まではローディングを表示
+  if (isSyncLoading || isImageLoading) {
     return <div className="wait-container">クラス情報を確認中...</div>;
   }
 

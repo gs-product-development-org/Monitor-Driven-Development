@@ -7,16 +7,23 @@ import { supabase } from '@/lib/supabase';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import './answer.css';
 
-// sessionStorage 保存用キー名定数
 const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
+const LAST_POST_ACTION_KEY = 'last_post_action';
 
-// genre_id から genre_name へのマッピング
 const GENRE_ID_TO_NAME: Record<number, string> = {
   1: '学校',
   2: '日常',
   3: '好きなもの',
   4: '雑談',
   5: 'ユニーク',
+};
+
+const GENRE_NAME_TO_ID: Record<string, number> = {
+  学校: 1,
+  日常: 2,
+  好きなもの: 3,
+  雑談: 4,
+  ユニーク: 5,
 };
 
 type StockTopic = {
@@ -29,20 +36,21 @@ type ActionType = 'chest' | 'announce';
 type TopicInfo = {
   topic_id: number | null;
   class_id: number | null;
+  genre_id: number | null;
   genre_name: string;
   topic_content: string;
 };
 
 export default function TopicStockPage() {
   const router = useRouter();
-  const { user } = useRequireAuth(); // ユーザー情報の取得
+  const { user } = useRequireAuth();
 
   const [step, setStep] = useState<'input' | 'action'>('input');
 
-  // お題データ用 State
   const [currentTopicInfo, setCurrentTopicInfo] = useState<TopicInfo>({
     topic_id: null,
     class_id: null,
+    genre_id: null,
     genre_name: 'お題',
     topic_content: '',
   });
@@ -51,96 +59,116 @@ export default function TopicStockPage() {
   const [inputText, setInputText] = useState<string>('');
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
-  // 送信処理中フラグ
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  // モーダル管理用 State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
 
-  // スクロール検知用 Ref & State
   const chatAreaRef = useRef<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState<boolean>(false);
 
-  // ★初期化：sessionStorage に無ければ RPC `get_topic` から取得して一律キャッシュ化
+  // ★ 最新のお題を DB (RPC: get_topic) から強制取得する共通関数
+  const fetchLatestTopic = async () => {
+    try {
+      let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
+      if (!classId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        classId = Number(sessionData?.session?.user?.user_metadata?.class_id);
+      }
+
+      if (!classId) {
+        console.error('クラスIDを取得できませんでした');
+        return;
+      }
+
+      // RPC呼び出し
+      const { data, error } = await supabase.rpc('get_topic', {
+        p_class_id: classId,
+      });
+
+      if (error) {
+        console.error('get_topic の呼び出しに失敗:', error);
+        return;
+      }
+
+      const latestTopic = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+      if (latestTopic) {
+        const resolvedGenreId = latestTopic.genre_id
+          ? Number(latestTopic.genre_id)
+          : latestTopic.genre_name
+          ? GENRE_NAME_TO_ID[latestTopic.genre_name] || 1
+          : 1;
+
+        const resolvedGenreName =
+          latestTopic.genre_name ||
+          GENRE_ID_TO_NAME[resolvedGenreId] ||
+          'お題';
+
+        const topicData: TopicInfo = {
+          topic_id: Number(latestTopic.topic_id),
+          class_id: Number(latestTopic.class_id),
+          genre_id: resolvedGenreId,
+          genre_name: resolvedGenreName,
+          topic_content: latestTopic.topic_content,
+        };
+
+        // 最新データで State と sessionStorage を同時に上書き
+        setCurrentTopicInfo(topicData);
+        sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(topicData));
+      } else {
+        console.warn('該当するクラスのお題が見つかりませんでした');
+      }
+    } catch (err) {
+      console.error('お題取得中に例外エラーが発生:', err);
+    }
+  };
+
+  // 初期化 & リアルタイム監視設定
   useEffect(() => {
-    const loadTopic = async () => {
-      // 1. まず sessionStorage から復元を試みる
-      const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.topic_id && parsed.topic_content) {
-            setCurrentTopicInfo({
-              topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
-              class_id: parsed.class_id ? Number(parsed.class_id) : null,
-              genre_name: parsed.genre_name || 'お題',
-              topic_content: parsed.topic_content || '',
-            });
-            return; // キャッシュがあればDBアクセスせず終了
-          }
-        } catch (e) {
-          console.error('sessionStorage の読み込みエラー:', e);
-        }
-      }
-
-      // 2. キャッシュがない場合は DB（RPC: get_topic）から最新お題を取得
+    // 1. まずは初期表示のチラつきを防ぐため sessionStorage から一時復元
+    const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
+    if (stored) {
       try {
-        let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
-        if (!classId) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          classId = Number(sessionData?.session?.user?.user_metadata?.class_id);
-        }
+        const parsed = JSON.parse(stored);
+        if (parsed.topic_id && parsed.topic_content) {
+          const restoredGenreId = parsed.genre_id
+            ? Number(parsed.genre_id)
+            : parsed.genre_name
+            ? GENRE_NAME_TO_ID[parsed.genre_name] || 1
+            : 1;
 
-        if (!classId) {
-          console.error('クラスIDを取得できませんでした');
-          return;
-        }
-
-        // RPC 関数の呼び出し
-        const { data, error } = await supabase.rpc('get_topic', {
-          p_class_id: classId,
-        });
-
-        if (error) {
-          console.error('get_topic の呼び出しに失敗:', {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-            fullError: error,
+          setCurrentTopicInfo({
+            topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
+            class_id: parsed.class_id ? Number(parsed.class_id) : null,
+            genre_id: restoredGenreId,
+            genre_name: parsed.genre_name || 'お題',
+            topic_content: parsed.topic_content || '',
           });
-          return;
         }
-
-        const latestTopic = Array.isArray(data) && data.length > 0 ? data[0] : null;
-
-        if (latestTopic) {
-          const resolvedGenreName =
-            latestTopic.genre_name ||
-            (latestTopic.genre_id ? GENRE_ID_TO_NAME[Number(latestTopic.genre_id)] : 'お題');
-
-          const topicData = {
-            topic_id: Number(latestTopic.topic_id),
-            class_id: Number(latestTopic.class_id),
-            genre_name: resolvedGenreName,
-            topic_content: latestTopic.topic_content,
-          };
-
-          // State を更新
-          setCurrentTopicInfo(topicData);
-
-          // 次回の表示や別画面用に sessionStorage へ保存
-          sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(topicData));
-        } else {
-          console.warn('該当するクラスのお題が見つかりませんでした');
-        }
-      } catch (err) {
-        console.error('お題取得中に例外エラーが発生:', err);
+      } catch (e) {
+        console.error('sessionStorage の読み込みエラー:', e);
       }
-    };
+    }
 
-    loadTopic();
+    // 2. sessionStorage に値があろうとなかろうと、必ず DB から最新お題を取得する
+    fetchLatestTopic();
+
+    // 3. Supabase Realtime: 教員側でお題が追加・更新されたら自動で再取得
+    const channel = supabase
+      .channel('topic_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'topics' }, // ※実際のテーブル名に合わせて調整してください
+        () => {
+          console.log('お題の更新を検知しました。最新のお題を取得します...');
+          fetchLatestTopic();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const checkScrollable = () => {
@@ -171,24 +199,20 @@ export default function TopicStockPage() {
     setInputText('');
   };
 
-  // フェーズ1の「確定」ボタン押下時
   const handleFirstConfirm = () => {
     if (!selectedTopicId) return;
     setIsModalOpen(true);
   };
 
-  // フェーズ1モーダルの「これにする」ボタン押下時
   const handlePhase1ModalSubmit = () => {
     setIsModalOpen(false);
     setStep('action');
   };
 
-  // フェーズ2のボタン選択時
   const handleActionSelect = (action: ActionType) => {
     setPendingAction(action);
   };
 
-  // 最終確定処理
   const handleActionModalSubmit = async () => {
     const selectedTopic = stockList.find((item) => item.id === selectedTopicId);
     if (!selectedTopic || !pendingAction || isSubmitting) return;
@@ -214,7 +238,7 @@ export default function TopicStockPage() {
         return;
       }
 
-      const isPosted = pendingAction === 'announce'; // announce なら true, chest なら false
+      const isPosted = pendingAction === 'announce';
 
       const { data, error } = await supabase.rpc('create_post', {
         p_class_id: classId,
@@ -232,9 +256,11 @@ export default function TopicStockPage() {
       }
 
       console.log('投稿完了:', data);
+
+      sessionStorage.setItem(LAST_POST_ACTION_KEY, pendingAction);
+
       setPendingAction(null);
 
-      // 待機画面へ移動
       router.push('/wait');
     } catch (err) {
       console.error('処理例外エラー:', err);

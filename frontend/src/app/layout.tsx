@@ -1,4 +1,5 @@
 import { DotGothic16 } from 'next/font/google';
+import SyncContainer from '@/components/realtime/SyncContainer';
 import './globals.css';
 
 // フォントの設定（subset と weight を指定）
@@ -16,7 +17,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       {/* className にフォントクラスを指定 */}
-      <body className={dotGothic16.className}>{children}</body>
+      <body className={dotGothic16.className}>
+        <SyncContainer>
+          {children}
+        </SyncContainer>
+      </body>
     </html>
   );
 }
