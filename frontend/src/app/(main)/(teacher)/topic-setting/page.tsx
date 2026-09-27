@@ -306,27 +306,6 @@ export default function SetTopicPage() {
         createdTopic
       );
 
-      // --------------------------------
-      // 作成したお題情報を保存
-      //
-      // RPCでclass_sessions.topic_idにも
-      // 同じtopic_idが設定されている。
-      // --------------------------------
-      const currentWorkTopic = {
-        topic_id: createdTopic.topic_id,
-        class_id: createdTopic.class_id,
-        genre_id: createdTopic.genre_id,
-        topic_content:
-          createdTopic.topic_content,
-      };
-
-      sessionStorage.setItem(
-        CURRENT_WORK_TOPIC_KEY,
-        JSON.stringify(
-          currentWorkTopic
-        )
-      );
-
       setIsModalOpen(false);
 
       // --------------------------------

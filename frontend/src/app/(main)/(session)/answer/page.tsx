@@ -6,9 +6,6 @@ import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import './answer.css';
 
-// sessionStorage 保存用キー名定数
-const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
-
 // genre_id から genre_name へのマッピング
 const GENRE_ID_TO_NAME: Record<number, string> = {
   1: '学校',
@@ -203,11 +200,6 @@ export default function TopicStockPage() {
         // ③ Stateを更新
         setCurrentTopicInfo(topicInfo);
 
-        // ④ sessionStorageはキャッシュとして更新
-        sessionStorage.setItem(
-          CURRENT_WORK_TOPIC_KEY,
-          JSON.stringify(topicInfo)
-        );
       } catch (error) {
         console.error(
           'お題取得中に例外エラーが発生:',
