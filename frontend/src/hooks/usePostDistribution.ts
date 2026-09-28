@@ -10,7 +10,7 @@ type User = {
   user_id: number;
   class_id: number;
   user_number: number;
-  role: boolean;
+  role: string;
 };
 
 type Post = {
@@ -36,13 +36,12 @@ type Distribution = {
  */
 
 /**
- * 配列を決定論的に並び替えるための簡易ハッシュ
+ * 文字列から決定論的なハッシュ値を作る。
  *
- * Math.random() を使うと、
- * ブラウザ・実行タイミングによって結果が変わる。
+ * Math.random() は使わない。
  *
- * そこで、同じ classId / userId / postId から
- * 常に同じ値を生成する。
+ * 同じ classId / topicId / 投稿・ユーザー情報なら、
+ * どのブラウザでも同じ結果になる。
  */
 function hashString(value: string): number {
   let hash = 2166136261;
@@ -63,9 +62,6 @@ function hashString(value: string): number {
 
 /**
  * 決定論的シャッフル
- *
- * 同じ配列・同じseedなら、
- * 毎回同じ結果になる。
  */
 function seededShuffle<T>(
   array: T[],
@@ -179,32 +175,39 @@ class Dinic {
     for (
       let i = this.iter[v];
       i < this.graph[v].length;
-      i++, this.iter[v]++
+      i++
     ) {
+      this.iter[v] = i;
+
       const edge = this.graph[v][i];
 
       if (
-        edge.cap > 0 &&
-        this.level[v] < this.level[edge.to]
+        edge.cap <= 0 ||
+        this.level[v] >= this.level[edge.to]
       ) {
-        const d = this.dfs(
-          edge.to,
-          sink,
-          Math.min(flow, edge.cap)
-        );
+        continue;
+      }
 
-        if (d > 0) {
-          edge.cap -= d;
+      const d = this.dfs(
+        edge.to,
+        sink,
+        Math.min(flow, edge.cap)
+      );
 
-          const reverseEdge =
-            this.graph[edge.to][edge.rev];
+      if (d > 0) {
+        edge.cap -= d;
 
-          reverseEdge.cap += d;
+        const reverseEdge =
+          this.graph[edge.to][edge.rev];
 
-          return d;
-        }
+        reverseEdge.cap += d;
+
+        return d;
       }
     }
+
+    this.iter[v] =
+      this.graph[v].length;
 
     return 0;
   }
@@ -240,10 +243,6 @@ class Dinic {
 
     return flow;
   }
-
-  getGraph(): Edge[][] {
-    return this.graph;
-  }
 }
 
 /**
@@ -253,13 +252,35 @@ class Dinic {
  */
 
 /**
- * 1人あたり何件配布するかを計算する。
- * ただし最大10件まで。
+ * 1人あたり何件配布するか決める。
+ *
+ * 条件：
+ *
+ * 1. 最大10件
+ * 2. 自分の投稿を除外するため最大 posts.length - 1 件
+ * 3. 可能な限り1投稿あたり10リアクションを目指す
+ *
+ * 例：
+ *
+ * 3人・3投稿
+ *
+ *   ceil(10 × 3 / 3) = 10
+ *
+ * ただし1人は自分の投稿を除いて
+ * 最大2件しか選べない。
+ *
+ * → 2件
+ *
+ * 40人・28投稿
+ *
+ *   ceil(10 × 28 / 40)
+ *   = 7
+ *
+ * → 7件
  */
 function calculatePostsPerUser(
   userCount: number,
-  postCount: number,
-  maxEligiblePosts: number
+  postCount: number
 ): number {
   if (
     userCount <= 0 ||
@@ -268,6 +289,20 @@ function calculatePostsPerUser(
     return 0;
   }
 
+  /**
+   * 各ユーザーは1投稿しか持たないため、
+   * 自分以外の投稿は最大 postCount - 1 件。
+   */
+  const maxEligiblePosts =
+    postCount - 1;
+
+  if (maxEligiblePosts <= 0) {
+    return 0;
+  }
+
+  /**
+   * 1投稿あたり10リアクションを目標にする。
+   */
   const calculated = Math.ceil(
     (TARGET_REACTIONS_PER_POST *
       postCount) /
@@ -283,102 +318,205 @@ function calculatePostsPerUser(
 
 /**
  * ------------------------------------------------------------
- * クラス全体の配布処理
+ * 配布結果の検証
+ * ------------------------------------------------------------
+ */
+
+function validateDistribution(
+  users: User[],
+  posts: Post[],
+  distribution: Distribution,
+  postsPerUser: number
+): boolean {
+  /**
+   * ----------------------------------------------------------
+   * 1. 各ユーザーの件数確認
+   * ----------------------------------------------------------
+   */
+  for (const user of users) {
+    const assigned =
+      distribution[user.user_id] ?? [];
+
+    if (
+      assigned.length !== postsPerUser
+    ) {
+      console.error(
+        '【配布検証失敗】ユーザーの配布数が不正',
+        {
+          userId: user.user_id,
+          expected: postsPerUser,
+          actual: assigned.length,
+          assigned,
+        }
+      );
+
+      return false;
+    }
+
+    /**
+     * 自分の投稿が含まれていないか確認
+     */
+    const ownPostIds =
+      posts
+        .filter(
+          (post) =>
+            post.user_id === user.user_id
+        )
+        .map(
+          (post) =>
+            post.post_id
+        );
+
+    const hasOwnPost =
+      assigned.some(
+        (postId) =>
+          ownPostIds.includes(postId)
+      );
+
+    if (hasOwnPost) {
+      console.error(
+        '【配布検証失敗】自分の投稿が含まれている',
+        {
+          userId: user.user_id,
+          assigned,
+          ownPostIds,
+        }
+      );
+
+      return false;
+    }
+  }
+
+  /**
+   * ----------------------------------------------------------
+   * 2. 各投稿のリアクション数確認
+   * ----------------------------------------------------------
+   */
+
+  const reactionCounts =
+    new Map<number, number>();
+
+  posts.forEach((post) => {
+    reactionCounts.set(
+      post.post_id,
+      0
+    );
+  });
+
+  for (const userId of Object.keys(
+    distribution
+  )) {
+    const assigned =
+      distribution[
+        Number(userId)
+      ] ?? [];
+
+    for (const postId of assigned) {
+      reactionCounts.set(
+        postId,
+        (reactionCounts.get(
+          postId
+        ) ?? 0) + 1
+      );
+    }
+  }
+
+  const counts = Array.from(
+    reactionCounts.values()
+  );
+
+  if (counts.length > 0) {
+    const min =
+      Math.min(...counts);
+
+    const max =
+      Math.max(...counts);
+
+    /**
+     * 投稿間の差は最大1
+     */
+    if (max - min > 1) {
+      console.error(
+        '【配布検証失敗】投稿間のリアクション数の差が2以上',
+        {
+          reactionCounts:
+            Object.fromEntries(
+              reactionCounts
+            ),
+          min,
+          max,
+        }
+      );
+
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * ------------------------------------------------------------
+ * クラス全体の配布
  * ------------------------------------------------------------
  */
 
 function createDistribution(
   users: User[],
   posts: Post[],
-  classId: number
+  classId: number,
+  topicId: number
 ): Distribution {
-  const distribution: Distribution = {};
+  const emptyDistribution: Distribution = {};
 
-  /**
-   * 全ユーザーについて、
-   * 最初は空の配布リストを作る。
-   */
   users.forEach((user) => {
-    distribution[user.user_id] = [];
+    emptyDistribution[user.user_id] = [];
   });
 
   if (
     users.length === 0 ||
     posts.length === 0
   ) {
-    return distribution;
+    return emptyDistribution;
   }
 
   /**
    * ----------------------------------------------------------
-   * 各ユーザーが受け取れる投稿数の最大値を確認
+   * 配布件数 K を決定
    * ----------------------------------------------------------
-   *
-   * 自分の投稿があるユーザー：
-   *
-   *   投稿数 - 1
-   *
-   * 自分の投稿がないユーザー：
-   *
-   *   投稿数
-   *
-   * 全員が同じ件数を受け取る必要があるため、
-   * 最も制約の厳しいユーザーに合わせる。
-   */
-  let maxEligiblePosts = posts.length;
-
-  for (const user of users) {
-    const hasOwnPost = posts.some(
-      (post) =>
-        post.user_id === user.user_id
-    );
-
-    const eligibleCount = hasOwnPost
-      ? posts.length - 1
-      : posts.length;
-
-    maxEligiblePosts = Math.min(
-      maxEligiblePosts,
-      eligibleCount
-    );
-  }
-
-  if (maxEligiblePosts <= 0) {
-    return distribution;
-  }
-
-  /**
-   * まず1人あたりの配布数を決定。
    */
   let postsPerUser =
     calculatePostsPerUser(
       users.length,
-      posts.length,
-      maxEligiblePosts
+      posts.length
     );
 
   if (postsPerUser <= 0) {
-    return distribution;
+    return emptyDistribution;
   }
+
+  console.log(
+    '【配布設定】',
+    {
+      classId,
+      topicId,
+      userCount: users.length,
+      postCount: posts.length,
+      postsPerUser,
+      maxPostsPerUser:
+        MAX_POSTS_PER_USER,
+      targetReactionsPerPost:
+        TARGET_REACTIONS_PER_POST,
+    }
+  );
 
   /**
    * ----------------------------------------------------------
-   * 実際に割り当て可能か確認
+   * K件配布可能か確認
    * ----------------------------------------------------------
    *
-   * 特殊な人数・投稿数の組み合わせでは、
-   * 計算上の件数をそのまま割り当てられない
-   * 場合がある。
-   *
-   * その場合は、
-   *
-   *   K=10
-   *   ↓
-   *   K=9
-   *   ↓
-   *   K=8
-   *
-   * のように1件ずつ減らして再試行する。
+   * 万一、特殊な組み合わせでK件配布が不可能なら、
+   * Kを1件ずつ減らして再試行する。
    */
   while (postsPerUser > 0) {
     const result =
@@ -386,22 +524,54 @@ function createDistribution(
         users,
         posts,
         classId,
+        topicId,
         postsPerUser
       );
 
     if (result !== null) {
-      return result;
+      const valid =
+        validateDistribution(
+          users,
+          posts,
+          result,
+          postsPerUser
+        );
+
+      if (valid) {
+        console.log(
+          '【配布成功】',
+          {
+            postsPerUser,
+            distribution:
+              result,
+          }
+        );
+
+        return result;
+      }
     }
+
+    console.warn(
+      '【配布再試行】',
+      {
+        failedPostsPerUser:
+          postsPerUser,
+      }
+    );
 
     postsPerUser--;
   }
 
-  return distribution;
+  console.error(
+    '【配布失敗】有効な配布を作成できませんでした'
+  );
+
+  return emptyDistribution;
 }
 
 /**
  * ------------------------------------------------------------
- * 最大フローを使った実際の割り当て
+ * 最大フローによる配布
  * ------------------------------------------------------------
  */
 
@@ -409,10 +579,14 @@ function tryCreateDistribution(
   users: User[],
   posts: Post[],
   classId: number,
+  topicId: number,
   postsPerUser: number
 ): Distribution | null {
-  const userCount = users.length;
-  const postCount = posts.length;
+  const userCount =
+    users.length;
+
+  const postCount =
+    posts.length;
 
   const totalAssignments =
     userCount * postsPerUser;
@@ -422,56 +596,46 @@ function tryCreateDistribution(
    * 投稿ごとの目標リアクション数
    * ----------------------------------------------------------
    *
-   * 例えば、
+   * 総配布数を投稿数で割る。
    *
-   *   40人 × 7件 = 280
-   *   28投稿
+   * 例：
    *
-   * なら、
+   * 3人 × 2件 = 6件
+   * 3投稿
    *
-   *   280 / 28 = 10
+   * → 2 / 2 / 2
    *
-   * なので全投稿10リアクション。
+   * 例：
    *
-   * 一方、
+   * 5人 × 2件 = 10件
+   * 3投稿
    *
-   *   40人 × 7件 = 280
-   *   27投稿
+   * → 3 / 3 / 4
    *
-   * なら、
-   *
-   *   280 / 27
-   *
-   * なので、
-   *
-   *   10件の投稿
-   *   11件の投稿
-   *
-   * に分ける。
-   *
-   * 最大値 - 最小値 = 1
-   * となる。
+   * 最大差は必ず1。
    */
   const baseReactionCount =
     Math.floor(
-      totalAssignments / postCount
+      totalAssignments /
+        postCount
     );
 
   const extraReactionCount =
-    totalAssignments % postCount;
+    totalAssignments %
+    postCount;
 
   /**
-   * 投稿を決定論的にシャッフル。
-   *
-   * extraReactionCount 件だけ、
-   * base + 1 件のリアクションを割り当てる。
+   * 投稿を決定論的に並び替える。
    */
   const shuffledPosts =
     seededShuffle(
       posts,
-      `class-${classId}-posts-${postsPerUser}`
+      `class-${classId}-topic-${topicId}-targets-${postsPerUser}`
     );
 
+  /**
+   * post_id → 目標リアクション数
+   */
   const targetReactionCounts =
     new Map<number, number>();
 
@@ -491,31 +655,27 @@ function tryCreateDistribution(
 
   /**
    * ----------------------------------------------------------
-   * Flow Graph
+   * Graph
    * ----------------------------------------------------------
    *
    * source
    *   ↓
-   * users
+   * user
    *   ↓
-   * posts
+   * post
    *   ↓
    * sink
    *
    * source → user
-   *     capacity = postsPerUser
+   *   capacity = postsPerUser
    *
    * user → post
-   *     capacity = 1
+   *   capacity = 1
    *
    * post → sink
-   *     capacity = targetReactionCount
+   *   capacity = targetReactionCount
    *
-   * ただし、
-   *
-   * user自身の投稿
-   *
-   * にはエッジを作らない。
+   * 自分の投稿には user → post のエッジを作らない。
    */
 
   const SOURCE = 0;
@@ -528,7 +688,8 @@ function tryCreateDistribution(
   const SINK =
     POST_START + postCount;
 
-  const nodeCount = SINK + 1;
+  const nodeCount =
+    SINK + 1;
 
   const dinic =
     new Dinic(nodeCount);
@@ -589,8 +750,7 @@ function tryCreateDistribution(
   /**
    * user → post のエッジを保存。
    *
-   * 後でflowが流れたエッジを調べて、
-   * 配布結果を作る。
+   * 後でflowが流れたエッジを調べる。
    */
   const assignmentEdges: {
     userId: number;
@@ -599,44 +759,48 @@ function tryCreateDistribution(
   }[] = [];
 
   /**
-   * ユーザーを決定論的にシャッフル。
+   * ユーザーを決定論的に並び替える。
    */
   const shuffledUsers =
     seededShuffle(
       users,
-      `class-${classId}-users-${postsPerUser}`
+      `class-${classId}-topic-${topicId}-users-${postsPerUser}`
     );
 
   /**
-   * 投稿も決定論的にシャッフル。
+   * 投稿を決定論的に並び替える。
    */
   const orderedPosts =
     seededShuffle(
       posts,
-      `class-${classId}-edges-${postsPerUser}`
+      `class-${classId}-topic-${topicId}-edges-${postsPerUser}`
     );
 
+  /**
+   * user → post
+   */
   for (const user of shuffledUsers) {
     const userNode =
       userNodeMap.get(
         user.user_id
       );
 
-    if (userNode === undefined) {
+    if (
+      userNode === undefined
+    ) {
       continue;
     }
 
     for (const post of orderedPosts) {
       /**
-       * ------------------------------------------------------
-       * 自分自身の投稿は除外
-       * ------------------------------------------------------
+       * 自分の投稿は除外。
        *
-       * role=true / false に関係なく、
-       * 「自分の投稿」は自分には配布しない。
+       * 先生・生徒というroleは関係なく、
+       * user_idが同じなら除外する。
        */
       if (
-        post.user_id === user.user_id
+        post.user_id ===
+        user.user_id
       ) {
         continue;
       }
@@ -646,7 +810,9 @@ function tryCreateDistribution(
           post.post_id
         );
 
-      if (postNode === undefined) {
+      if (
+        postNode === undefined
+      ) {
         continue;
       }
 
@@ -658,15 +824,19 @@ function tryCreateDistribution(
         );
 
       assignmentEdges.push({
-        userId: user.user_id,
-        postId: post.post_id,
+        userId:
+          user.user_id,
+        postId:
+          post.post_id,
         edge,
       });
     }
   }
 
   /**
-   * 最大フローを計算。
+   * ----------------------------------------------------------
+   * 最大フロー実行
+   * ----------------------------------------------------------
    */
   const flow =
     dinic.maxFlow(
@@ -674,9 +844,26 @@ function tryCreateDistribution(
       SINK
     );
 
+  console.log(
+    '【最大フロー結果】',
+    {
+      classId,
+      topicId,
+      postsPerUser,
+      totalAssignments,
+      flow,
+      baseReactionCount,
+      extraReactionCount,
+      targetReactionCounts:
+        Object.fromEntries(
+          targetReactionCounts
+        ),
+    }
+  );
+
   /**
-   * 全員に予定件数を割り当てられなかった場合、
-   * この postsPerUser では不可能。
+   * 全員分を割り当てられなければ、
+   * このKでは成立しない。
    */
   if (
     flow !== totalAssignments
@@ -686,11 +873,10 @@ function tryCreateDistribution(
 
   /**
    * ----------------------------------------------------------
-   * 配布結果を作る
+   * Flow → Distribution
    * ----------------------------------------------------------
-   *
-   * 今回の試行専用に新しいDistributionを作る。
    */
+
   const distribution: Distribution =
     {};
 
@@ -699,9 +885,10 @@ function tryCreateDistribution(
   });
 
   /**
-   * capacity = 1 のエッジが
-   * 0 になっていれば、
-   * そのエッジに1単位のflowが流れている。
+   * user → post の元容量は1。
+   *
+   * flowが1流れた場合、
+   * forward edgeのcapacityは0になる。
    */
   for (
     const assignment
@@ -719,9 +906,11 @@ function tryCreateDistribution(
   }
 
   /**
-   * 念のため、
-   * 全ユーザーが予定件数を受け取っているか確認。
+   * ----------------------------------------------------------
+   * ユーザーごとの件数を確認
+   * ----------------------------------------------------------
    */
+
   for (const user of users) {
     const assigned =
       distribution[
@@ -732,9 +921,67 @@ function tryCreateDistribution(
       assigned.length !==
       postsPerUser
     ) {
+      console.error(
+        '【配布結果エラー】',
+        {
+          userId:
+            user.user_id,
+          expected:
+            postsPerUser,
+          actual:
+            assigned.length,
+          assigned,
+        }
+      );
+
       return null;
     }
   }
+
+  /**
+   * ----------------------------------------------------------
+   * 投稿ごとのリアクション数
+   * ----------------------------------------------------------
+   */
+
+  const actualReactionCounts =
+    new Map<number, number>();
+
+  posts.forEach((post) => {
+    actualReactionCounts.set(
+      post.post_id,
+      0
+    );
+  });
+
+  for (
+    const userId of Object.keys(
+      distribution
+    )
+  ) {
+    const assigned =
+      distribution[
+        Number(userId)
+      ] ?? [];
+
+    for (
+      const postId of assigned
+    ) {
+      actualReactionCounts.set(
+        postId,
+        (actualReactionCounts.get(
+          postId
+        ) ?? 0) + 1
+      );
+    }
+  }
+
+  console.log(
+    '【実際の投稿別リアクション数】',
+    Object.fromEntries(
+      actualReactionCounts
+    )
+  );
 
   return distribution;
 }
@@ -747,7 +994,7 @@ function tryCreateDistribution(
 
 export function usePostDistribution(
   classId: number | null,
-  currentUserId: number | null,  //class_idとuser_idを引数にして...
+  currentUserId: number | null,
   topicId: number | null
 ) {
   const [
@@ -793,6 +1040,10 @@ export function usePostDistribution(
            * --------------------------------------------------
            * 1. クラス内の全ユーザーを取得
            * --------------------------------------------------
+           *
+           * 先生も生徒も取得する。
+           *
+           * roleによる除外は行わない。
            */
           const {
             data: users,
@@ -819,8 +1070,14 @@ export function usePostDistribution(
 
           /**
            * --------------------------------------------------
-           * 2. 公開済み投稿を取得
+           * 2. 現在のお題の全体公開投稿を取得
            * --------------------------------------------------
+           *
+           * is_posted = true
+           *
+           * の投稿をすべて取得する。
+           *
+           * 先生の投稿も含まれる。
            */
           const {
             data: posts,
@@ -871,6 +1128,39 @@ export function usePostDistribution(
 
           /**
            * --------------------------------------------------
+           * デバッグ
+           * --------------------------------------------------
+           */
+          console.log(
+            '================================'
+          );
+
+          console.log(
+            '【リアクション配布開始】'
+          );
+
+          console.log({
+            classId,
+            currentUserId,
+            topicId,
+            userCount:
+              safeUsers.length,
+            postCount:
+              safePosts.length,
+          });
+
+          console.log(
+            '【ユーザー一覧】',
+            safeUsers
+          );
+
+          console.log(
+            '【全体公開投稿一覧】',
+            safePosts
+          );
+
+          /**
+           * --------------------------------------------------
            * 3. クラス全体の配布を計算
            * --------------------------------------------------
            */
@@ -878,18 +1168,21 @@ export function usePostDistribution(
             createDistribution(
               safeUsers,
               safePosts,
-              classId
+              classId,
+              topicId
             );
 
           if (cancelled) {
             return;
           }
 
-          setDistribution(result);
+          setDistribution(
+            result
+          );
 
           /**
            * --------------------------------------------------
-           * 4. 現在ログインしているユーザーの配布だけ取得
+           * 4. 現在のユーザーに配布された投稿を取得
            * --------------------------------------------------
            */
           const assignedPostIds =
@@ -897,10 +1190,6 @@ export function usePostDistribution(
               currentUserId
             ] ?? [];
 
-          /**
-           * post_id[] を
-           * Post[] に変換する。
-           */
           const assigned =
             assignedPostIds
               .map((postId) =>
@@ -916,6 +1205,21 @@ export function usePostDistribution(
                 ): post is Post =>
                   post !== undefined
               );
+
+          console.log(
+            '【現在ユーザーへの配布】',
+            {
+              currentUserId,
+              assignedPostIds,
+              assignedCount:
+                assigned.length,
+              assigned,
+            }
+          );
+
+          console.log(
+            '================================'
+          );
 
           setAssignedPosts(
             assigned
@@ -951,7 +1255,7 @@ export function usePostDistribution(
   }, [
     classId,
     currentUserId,
-    topicId
+    topicId,
   ]);
 
   return {
