@@ -87,3 +87,88 @@
   border-radius: 20px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
+
+/* --------------------------------------------------
+ * 画面幅が狭い場合（タブレット・スマホ: 900px 以下）
+ * -------------------------------------------------- */
+@media (max-width: 900px) {
+  .rate-container {
+    padding: 16px;
+  }
+
+  .rate-back-button {
+    top: 12px;
+    left: 12px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .back-arrow {
+    font-size: 18px;
+  }
+
+  .back-text {
+    font-size: 18px;
+    margin-bottom: 2px;
+  }
+
+  .rate-header {
+    margin-top: 36px; /* もどるボタンとの被りを防止 */
+  }
+
+  .rate-title {
+    font-size: 20px;
+  }
+
+  .rate-sub-title {
+    font-size: 12px;
+  }
+
+  .rate-chart-wrapper {
+    margin-top: 10px;
+    padding: 12px 12px 6px 0px;
+    border-radius: 14px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さが低い場合（高さ 700px 以下：ノートPC・横持ちスマホ等）
+ * -------------------------------------------------- */
+@media (max-height: 700px) {
+  .rate-container {
+    padding: 12px;
+  }
+
+  .rate-back-button {
+    top: 8px;
+    left: 8px;
+    padding: 4px 6px;
+  }
+
+  .back-arrow {
+    font-size: 16px;
+  }
+
+  .back-text {
+    font-size: 16px;
+  }
+
+  .rate-header {
+    margin-top: 0;
+  }
+
+  .rate-title {
+    font-size: 18px;
+    margin-bottom: 2px;
+  }
+
+  .rate-sub-title {
+    font-size: 11px;
+  }
+
+  .rate-chart-wrapper {
+    margin-top: 8px;
+    padding: 10px 10px 4px 0px;
+    border-radius: 12px;
+  }
+}

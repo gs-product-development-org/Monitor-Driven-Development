@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useSync } from '@/components/realtime/SyncContainer'; // ★ 1. useSync をインポート
 
 // 共通型・定数のインポート
 import { Genre, GENRE_MAP, GENRES } from '@/types/reaction';
@@ -21,12 +22,10 @@ type TemplateTopic = {
 // セレクトボックスのデフォルト説明用テキスト
 const SELECT_PLACEHOLDER = '選択すると上のお題に反映されます';
 
-// sessionStorage 保存用キー名定数
-export const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
-
 export default function SetTopicPage() {
   const router = useRouter();
   const { user } = useRequireAuth(); // ユーザー情報取得フック
+  const { updateSessionPhase } = useSync(); // ★ 2. updateSessionPhase を取得
 
   // ジャンル選択 State
   const [selectedGenre, setSelectedGenre] = useState<Genre>('学校');
@@ -115,7 +114,7 @@ export default function SetTopicPage() {
     setIsModalOpen(true);
   };
 
-  // 5. モーダル内「始める」ボタンクリック処理（DB登録のみ実行）
+  // 5. モーダル内「始める」ボタンクリック処理（create_topic関数を実行し、phaseを'ANSWERING'に変更）
   const handleModalSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
@@ -149,7 +148,7 @@ export default function SetTopicPage() {
           ? selectedTemplate.template_topic_id
           : null;
 
-      // Supabase RPC関数 `create_topic` の呼び出し
+      // Supabase RPC関数 `create_topic` の呼び出し (topicsへの作成とclass_sessionsの更新)
       const { data, error } = await supabase.rpc('create_topic', {
         p_class_id: classId,
         p_genre_id: genreId,
@@ -164,13 +163,11 @@ export default function SetTopicPage() {
         return;
       }
 
-      // 新しいお題が設定されたため、過去のキャッシュを削除する
-      sessionStorage.removeItem(CURRENT_WORK_TOPIC_KEY);
+      // ★ 3. phase を 'ANSWERING' に更新
+      await updateSessionPhase('ANSWERING');
 
       setIsModalOpen(false);
 
-      // クエリパラメータで mode=topic_cushion を渡して待機画面に遷移
-      router.push('/wait?mode=topic_cushion');
     } catch (err: any) {
       console.error('送信処理中に例外が発生しました:', err);
       alert('予期せぬエラーが発生しました');

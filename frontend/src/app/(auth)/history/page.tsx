@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useSync } from '@/components/realtime/SyncContainer';
 import './history.css';
 
 // 宝箱の保管データ型（SQL関数の戻り値に合わせた型定義）
@@ -17,83 +17,62 @@ type TreasureItem = {
 
 export default function TreasureBoxPage() {
   const router = useRouter();
-  const { user } = useRequireAuth();
+
+  // 1. SyncContext よりユーザーIDと読み込み状態を取得
+  const { userId, isLoading: isSyncLoading } = useSync();
 
   const [treasures, setTreasures] = useState<TreasureItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 2. 宝箱データ取得処理
+  const fetchTreasures = useCallback(async (targetUserId: number) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Supabase RPC 関数 `get_treasure_box_posts` の呼び出し
+      const { data, error: rpcError } = await supabase.rpc('get_treasure_box_posts', {
+        p_user_id: targetUserId,
+      });
+
+      if (rpcError) {
+        throw new Error(`[Code: ${rpcError.code}] ${rpcError.message}`);
+      }
+
+      // 取得データの整形とState更新
+      if (data && data.length > 0) {
+        const formattedData: TreasureItem[] = data.map((item: any) => ({
+          post_id: item.post_id,
+          topic_id: item.topic_id,
+          topicTitle: item.topic_content || '',
+          answerText: item.post_content || '',
+          created_at: item.created_at,
+        }));
+
+        setTreasures(formattedData);
+      } else {
+        setTreasures([]);
+      }
+    } catch (err: any) {
+      console.error('宝箱データ取得エラー:', err);
+      setError(err.message || 'データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 3. userId が確定したタイミングでデータを取得
   useEffect(() => {
-    const fetchTreasures = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // 1. セッションまたは useRequireAuth から user_id を特定
-        let targetUserId: number | null = null;
-
-        if (user) {
-          const parsed = Number((user as any)?.user_id || (user as any)?.id || (user as any)?.student_id);
-          if (!isNaN(parsed) && parsed > 0) {
-            targetUserId = parsed;
-          }
-        }
-
-        // user から直接取得できなかった場合、Supabase セッションを直接確認
-        if (!targetUserId) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const sessionUser = sessionData?.session?.user;
-
-          if (sessionUser) {
-            // カスタムメタデータや ID から数値の user_id を取得
-            const metaUserId = Number(
-              sessionUser.user_metadata?.user_id || sessionUser.user_metadata?.student_id || sessionUser.id
-            );
-            if (!isNaN(metaUserId) && metaUserId > 0) {
-              targetUserId = metaUserId;
-            }
-          }
-        }
-
-        // ログイン情報または user_id が取得できない場合
-        if (!targetUserId) {
-          throw new Error('ユーザーセッションを取得できませんでした。ログインし直してください。');
-        }
-
-        // 2. Supabase RPC 関数 `get_treasure_box_posts` の呼び出し
-        const { data, error: rpcError } = await supabase.rpc('get_treasure_box_posts', {
-          p_user_id: targetUserId,
-        });
-
-        if (rpcError) {
-          throw new Error(`[Code: ${rpcError.code}] ${rpcError.message}`);
-        }
-
-        // 3. 取得データの整形とState更新
-        if (data && data.length > 0) {
-          const formattedData: TreasureItem[] = data.map((item: any) => ({
-            post_id: item.post_id,
-            topic_id: item.topic_id,
-            topicTitle: item.topic_content || '',
-            answerText: item.post_content || '',
-            created_at: item.created_at,
-          }));
-
-          setTreasures(formattedData);
-        } else {
-          setTreasures([]);
-        }
-      } catch (err: any) {
-        console.error('宝箱データ取得エラー:', err);
-        setError(err.message || 'データの取得に失敗しました');
-      } finally {
+    if (!isSyncLoading) {
+      if (userId) {
+        fetchTreasures(userId);
+      } else {
         setLoading(false);
       }
-    };
-
-    fetchTreasures();
-  }, [user]);
+    }
+  }, [userId, isSyncLoading, fetchTreasures]);
 
   const currentItem = treasures[currentIndex];
 
@@ -108,7 +87,7 @@ export default function TreasureBoxPage() {
   };
 
   // 読み込み中の表示
-  if (loading) {
+  if (isSyncLoading || loading) {
     return (
       <div className="treasure-container">
         <button

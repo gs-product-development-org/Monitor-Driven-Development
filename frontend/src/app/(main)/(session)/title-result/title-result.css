@@ -1,37 +1,40 @@
-/* 画面全体レイアウト */
+/* =========================================================
+   画面全体レイアウト (Base: Mobile / Tablet First)
+   ========================================================= */
 .result-container {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  padding: 32px 24px;
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px 16px;
   box-sizing: border-box;
   background-color: #FF648D;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
-/* メインコンテンツエリア (左右2分割) */
+/* メインコンテンツエリア */
 .result-main-content {
-  flex: 1;
-  width: 1100px;
-  height: 100%;
-  max-height: 520px;
+  width: 100%;
+  max-width: 1100px;
   display: flex;
-  gap: 32px;
+  flex-direction: column; /* モバイルでは縦並び */
+  gap: 24px;
   align-items: stretch;
 }
 
-/* ================= 画面左半分 (枠なし称号エリア) ================= */
+/* =========================================================
+   画面左半分 (称号表示エリア)
+   ========================================================= */
 .result-left-section-clean {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 60px;
+  gap: 24px;
 }
 
 .title-header-box {
@@ -46,23 +49,24 @@
   line-height: 1.3;
 }
 
-/* 1行目: あなたの称号は（少し小さめ） */
+/* 1行目: あなたの称号は */
 .title-sub-text {
-  font-size: 28px; /* 好みに合わせて 16px〜20px 等で調整してください */
+  font-size: 20px;
   font-weight: 500;
 }
 
-/* 2行目: 【称号名】タイプ！（大きめ・強調） */
+/* 2行目: 【称号名】！ */
 .title-highlight-text {
-  font-size: 35px; /* 好みに合わせて 24px〜32px 等で調整してください */
+  font-size: 26px;
   font-weight: bold;
+  word-break: break-word;
 }
 
 /* 画像枠コンテナ */
 .title-image-wrapper {
   position: relative;
-  width: 200px;
-  height: 200px;
+  width: 160px;
+  height: 160px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -74,7 +78,7 @@
   object-fit: contain;
 }
 
-/* フォールバック画像コンテナ & 画像スタイル */
+/* フォールバック画像 */
 .title-image-fallback {
   width: 100%;
   height: 100%;
@@ -89,7 +93,7 @@
   object-fit: contain;
 }
 
-/* 枠のないシンプルな説明文コンテナ */
+/* 説明文コンテナ */
 .title-description-box {
   width: 100%;
   padding: 0 8px;
@@ -97,16 +101,15 @@
   text-align: center;
 }
 
-/* 左エリア説明文文字色: 黒 */
 .description-text {
   margin: 0;
-  font-size: 28px;
+  font-size: 18px;
   color: #000000;
   line-height: 1.6;
   font-weight: 400;
 }
 
-/* 非公開プレースホルダーエリア */
+/* 非公開プレースホルダー */
 .private-title-placeholder {
   display: flex;
   flex-direction: column;
@@ -115,13 +118,16 @@
   width: 100%;
 }
 
-/* ================= 画面右半分 (透明コンテナ) ================= */
+/* =========================================================
+   画面右半分 (グラフ・称号紹介カードエリア)
+   ========================================================= */
 .result-right-section {
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   box-sizing: border-box;
+  gap: 16px;
 }
 
 /* 右エリア内の「白い枠組み（カード）」 */
@@ -130,7 +136,7 @@
   background-color: rgba(255, 255, 255, 0.95);
   border: 2px solid #5e5e5e;
   border-radius: 20px;
-  padding: 24px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -140,7 +146,7 @@
 }
 
 .chart-title {
-  font-size: 25px;
+  font-size: 20px;
   font-weight: bold;
   color: #1e293b;
   margin: 0 0 12px 0;
@@ -155,74 +161,83 @@
   justify-content: center;
 }
 
-/* 凡例リスト */
+/* 凡例リスト: 2列（2個×2行）で配置 */
 .chart-legend-list {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* 均等な2列に設定 */
+  gap: 10px 16px; /* 行間10px, 列間16px */
+  margin-top: 12px;
   width: 100%;
+  max-width: 320px; /* 枠内でキレイに中央寄せされるよう幅を制限 */
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: bold;
   color: #334155;
+  white-space: nowrap; /* ラベルの途中で改行されないように指定 */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .legend-color-dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0; /* ドットが潰れないように設定 */
 }
 
+
+
 .legend-label {
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .no-reactions-box {
   color: #94a3b8;
   font-size: 15px;
-  margin: auto;
+  padding: 32px 0;
+  text-align: center;
 }
 
-/* 白枠の外・右エリア下部に配置するボタンエリア */
+/* 右エリア下部ボタンエリア */
 .right-section-footer {
   width: 100%;
   display: flex;
-  justify-content: flex-end;
-  margin-top: 16px;
+  justify-content: center;
 }
 
 .go-answers-button {
-  width: 300px;
-  height: 80px;
-  border: 7px solid #000000;
+  width: 100%;
+  max-width: 300px;
+  height: 60px;
+  border: 4px solid #000000;
   border-radius: 12px;
-  font-size: 35px;
+  font-size: 22px;
   background-color: #FF3333;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-top: 0px;
-  padding-bottom: 6px;
+  padding-bottom: 2px;
   color: #ffffff;
-  font-weight: 550;
+  font-weight: 600;
+  cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .go-answers-button:hover {
   background-color: #ff7171;
-  border: 7px solid #525252;
-  transform: translateY(-2px) scale(1.02);
+  border-color: #525252;
+  transform: translateY(-2px) scale(1.01);
 }
 
-/* ================= 非公開時：ジャンル称号一覧スタイル ================= */
+/* 非公開時：ジャンル称号一覧スタイル */
 .genre-titles-container {
   width: 100%;
   height: 100%;
@@ -233,18 +248,18 @@
 }
 
 .genre-titles-subtext {
-  font-size: 16px;
+  font-size: 14px;
   color: #64748b;
-  margin: 0 0 20px 0;
+  margin: 0 0 16px 0;
   text-align: center;
 }
 
 .genre-title-grid {
   width: 100%;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  padding: 0 8px;
+  grid-template-columns: 1fr; /* スマホでは1列 */
+  gap: 12px;
+  padding: 0;
   box-sizing: border-box;
 }
 
@@ -252,7 +267,7 @@
   background-color: #f8fafc;
   border: 2px solid #cbd5e1;
   border-radius: 12px;
-  padding: 16px 12px;
+  padding: 12px 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,7 +276,87 @@
 }
 
 .genre-title-name {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: bold;
   color: #0f172a;
+}
+
+/* =========================================================
+   PC・タブレット横向き（901px以上）のレイアウト調整
+   ========================================================= */
+@media (min-width: 901px) {
+  .result-container {
+    height: 100vh;
+    padding: 32px 24px;
+    overflow: hidden;
+  }
+
+  .result-main-content {
+    height: 100%;
+    max-height: 540px;
+    flex-direction: row; /* 横並びに戻す */
+    gap: 32px;
+  }
+
+  .result-left-section-clean {
+    gap: 40px;
+  }
+
+  .title-sub-text {
+    font-size: 26px;
+  }
+
+  .title-highlight-text {
+    font-size: 34px;
+  }
+
+  .title-image-wrapper {
+    width: 200px;
+    height: 200px;
+  }
+
+  .description-text {
+    font-size: 24px;
+  }
+
+  .chart-card {
+    padding: 24px;
+  }
+
+  .chart-title {
+    font-size: 24px;
+  }
+
+  .chart-legend-list {
+    max-width: 360px;
+    gap: 12px 20px;
+  }
+
+  .legend-item {
+    font-size: 16px;
+  }
+
+  .right-section-footer {
+    justify-content: flex-end;
+  }
+
+  .go-answers-button {
+    width: 280px;
+    height: 72px;
+    border-width: 6px;
+    font-size: 28px;
+  }
+
+  .genre-titles-subtext {
+    font-size: 16px;
+  }
+
+  .genre-title-grid {
+    grid-template-columns: repeat(2, 1fr); /* PCでは2列 */
+    gap: 16px;
+  }
+
+  .genre-title-name {
+    font-size: 18px;
+  }
 }

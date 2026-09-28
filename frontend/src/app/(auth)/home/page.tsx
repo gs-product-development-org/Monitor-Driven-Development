@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUserStore, UserState } from '@/stores/useUserStore';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
+import { useSync } from '@/components/realtime/SyncContainer';
 import './home.css';
 
 const MAP_WIDTH = 3200;
@@ -18,37 +18,26 @@ type PlacedAnimal = {
   item_image?: string;
 };
 
-type ZooAreaDebug = {
-  area_id: number;
-  area_name?: string;
-  min_x: number;
-  max_x: number;
-  min_y: number;
-  max_y: number;
-};
-
 export default function ZooHomePage() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const user = useUserStore((state: UserState) => state.user);
-  const setUser = useUserStore((state: UserState) => state.setUser);
-  const clearUser = useUserStore((state: UserState) => state.clearUser);
+  // SyncContext から共通情報と各種操作メソッドを取得
+  const { isTeacher, classId, userId, isLoading: isSyncLoading, channel, updateSessionPhase } = useSync();
 
   const [showScrollHint, setShowScrollHint] = useState<boolean>(true);
   const [placedAnimals, setPlacedAnimals] = useState<PlacedAnimal[]>([]);
-  const [debugAreas, setDebugAreas] = useState<ZooAreaDebug[]>([]);
-  const [showDebugOverlay, setShowDebugOverlay] = useState<boolean>(true);
 
   // ガチャメーター用 State
   const [meterValue, setMeterValue] = useState<number>(0);
   const [needValue, setNeedValue] = useState<number>(1);
 
-  // メーター情報取得ロジック (get_meter RPC関数の呼出)
-  const fetchMeter = useCallback(async (classId: number) => {
+  // メーター情報取得ロジック
+  const fetchMeter = useCallback(async (cId: number) => {
     try {
+      await updateSessionPhase('HOME');
       const { data, error } = await supabase.rpc('get_meter', {
-        p_class_id: classId,
+        p_class_id: cId,
       });
 
       if (!error && Array.isArray(data) && data.length > 0) {
@@ -60,67 +49,46 @@ export default function ZooHomePage() {
     }
   }, []);
 
-  // 1. ユーザー情報復元 & メーター取得
-  useEffect(() => {
-    if (!user) {
-      const savedUser = sessionStorage.getItem('user_info');
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        setUser(parsed);
-        if (parsed?.class_id) {
-          fetchMeter(Number(parsed.class_id));
+  // 配置情報取得ロジック
+  const fetchPlacements = useCallback(async (cId: number) => {
+    try {
+      const { data, error } = await supabase.rpc(
+        'get_zoo_placements',
+        {
+          p_class_id: cId,
         }
-      } else {
-        router.push('/login');
+      );
+
+      if (error) {
+        console.error('get_zoo_placements取得失敗:', error);
+        return;
       }
-    } else if (user.class_id) {
-      fetchMeter(Number(user.class_id));
+
+      const formatted: PlacedAnimal[] = (data ?? []).map(
+        (item: any) => ({
+          placement_id: item.placement_id,
+          x_coord: item.x_coord,
+          y_coord: item.y_coord,
+          item_name: item.item_name || '名称不明',
+          item_image: item.item_image || 'default.png',
+        })
+      );
+
+      setPlacedAnimals(formatted);
+    } catch (err) {
+      console.error('通信エラー:', err);
     }
-  }, [user, setUser, router, fetchMeter]);
+  }, []);
 
-  // 2. DBからクラスに応じた動物の配置情報を取得
+  // 初期データ取得 (classId が確定したタイミングで実行)
   useEffect(() => {
-    if (!user?.class_id) return;
+    if (classId) {
+      fetchMeter(classId);
+      fetchPlacements(classId);
+    }
+  }, [classId, fetchMeter, fetchPlacements]);
 
-    const fetchPlacements = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('zoo_placements')
-          .select(`
-            placement_id,
-            x_coord,
-            y_coord,
-            items (
-              item_name,
-              item_image
-            )
-          `)
-          .eq('class_id', user.class_id);
-
-        if (error) {
-          console.error('Supabase取得失敗:', error);
-          return;
-        }
-
-        if (data && data.length > 0) {
-          const formatted: PlacedAnimal[] = data.map((item: any) => ({
-            placement_id: item.placement_id,
-            x_coord: item.x_coord,
-            y_coord: item.y_coord,
-            item_name: item.items?.item_name || '名称不明',
-            item_image: item.items?.item_image || 'default.png',
-          }));
-          setPlacedAnimals(formatted);
-        }
-      } catch (err) {
-        console.error('通信エラー:', err);
-      }
-    };
-
-    fetchPlacements();
-  }, [user?.class_id]);
-
-  // 初期表示スクロール制御
+  // スクロール位置制御
   useEffect(() => {
     const scrollToBottom = () => {
       if (containerRef.current) {
@@ -145,40 +113,8 @@ export default function ZooHomePage() {
     }
   };
 
-  const isTeacher = user?.role === 'teacher';
-
-  useEffect(() => {
-    if (!user || isTeacher) return;
-
-    const classId = user.class_id;
-    if (!classId) return;
-
-    const channel = supabase
-      .channel(`topic-watch-class-${classId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'topics',
-          filter: `class_id=eq.${classId}`,
-        },
-        (payload) => {
-          if (Number(payload.new.class_id) === Number(classId)) {
-            router.push('/wait?mode=topic_cushion');
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, isTeacher, router]);
-
   const handleLogout = () => {
     try {
-      clearUser();
       sessionStorage.removeItem('user_info');
     } catch (error) {
       console.error('ログアウト処理エラー:', error);
@@ -201,7 +137,7 @@ export default function ZooHomePage() {
 
   return (
     <div className="zoo-container" ref={containerRef} onScroll={handleScroll}>
-      {/* 画面右上: 1. 動的ガチャメーター (教員・児童問わず常に位置固定) */}
+      {/* 画面右上: ガチャメーター */}
       <div className="top-right-gacha-area">
         <div className="gacha-meter-container-home">
           <div className="gacha-meter-label">
@@ -229,7 +165,7 @@ export default function ZooHomePage() {
         </div>
       </div>
 
-      {/* 画面右上: 2. 教員メニュー (isTeacher が後から true になってもガチャメーターに影響を与えない) */}
+      {/* 画面右上: 教員用アクションボタン */}
       {isTeacher && (
         <div className="top-right-teacher-area">
           <div className="teacher-actions-column">
@@ -268,6 +204,7 @@ export default function ZooHomePage() {
         </div>
       )}
 
+      {/* 動物配置描画エリア */}
       <div className="zoo-scroll-content">
         {placedAnimals.map((animal) => {
           const leftPercent = (animal.x_coord / MAP_WIDTH) * 100;
@@ -308,9 +245,7 @@ export default function ZooHomePage() {
         )}
       </div>
 
-
-
-      {/* 中央下: お題を決めるボタン */}
+      {/* 中央下: お題を決めるボタン (教員のみ) */}
       {isTeacher && (
         <div className="bottom-center-area">
           <Button onClick={handleSetTopic} className="topic-btn-teacher">
@@ -319,7 +254,7 @@ export default function ZooHomePage() {
         </div>
       )}
 
-      {/* 最下部: 宝箱・称号を見るボタン */}
+      {/* 最下部: 宝箱・称号ボタン */}
       <div className="bottom-bar">
         <div className="bottom-left-area">
           <Button onClick={handleOpenTreasure} className="home-btn">

@@ -1,8 +1,9 @@
-/* 画面全体レイアウト */
+/* 画面全体レイアウト (デフォルト維持) */
 .treasure-container {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   padding: 24px;
   box-sizing: border-box;
   background-color: #FFEE00;
@@ -12,7 +13,6 @@
   justify-content: space-between;
   overflow: hidden;
 }
-
 
 /* 画面左上: 「◀ もどる」ボタン */
 .history-back-button {
@@ -90,6 +90,7 @@
   padding: 12px;
   user-select: none;
   transition: transform 0.15s ease, opacity 0.15s ease;
+  flex-shrink: 0;
 }
 
 .slider-arrow-button:hover {
@@ -105,9 +106,17 @@
   transform: rotate(-90deg);
 }
 
+.slider-arrow-button.prev:active {
+  transform: rotate(-90deg) scale(0.9);
+}
+
 /* 右向き三角 */
 .slider-arrow-button.next {
   transform: rotate(90deg);
+}
+
+.slider-arrow-button.next:active {
+  transform: rotate(90deg) scale(0.9);
 }
 
 /* 中央コンテンツエリア */
@@ -117,6 +126,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-width: 0;
 }
 
 /* 「お題：○○」黒文字 */
@@ -131,8 +142,8 @@
 /* 横向き卵画像コンテナ */
 .horizontal-egg-wrapper {
   position: relative;
-  width: 100%;
   width: 550px;
+  max-width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -166,6 +177,8 @@
   line-height: 1.5;
   margin: 0;
   word-break: break-word;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 /* ページカウンター */
@@ -199,4 +212,163 @@
   text-align: center;
   word-break: break-all;
   margin: 0;
+}
+
+
+/* --------------------------------------------------
+ * 画面の高さが低くなったとき（高さ 750px 以下）
+ * -------------------------------------------------- */
+@media (max-height: 750px) {
+  .treasure-header {
+    margin-top: 8px;
+  }
+
+  .treasure-title {
+    font-size: 28px;
+  }
+
+  .treasure-slider-area {
+    margin: 8px 0;
+  }
+
+  .slider-arrow-button {
+    font-size: 50px;
+    padding: 4px;
+  }
+
+  .treasure-topic-text {
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .horizontal-egg-wrapper {
+    width: 380px;
+  }
+
+  .egg-text-overlay {
+    padding: 20px 32px;
+  }
+
+  .egg-answer-text {
+    font-size: 18px;
+  }
+
+  .treasure-counter {
+    font-size: 18px;
+    margin-top: 8px;
+  }
+
+  .treasure-empty-text {
+    font-size: 32px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さがかなり低くなったとき（高さ 500px 以下：スマホ横持ちなど）
+ * -------------------------------------------------- */
+@media (max-height: 500px) {
+  .treasure-container {
+    padding: 12px;
+  }
+
+  .history-back-button {
+    top: 12px;
+    left: 12px;
+  }
+
+  .back-arrow,
+  .back-text {
+    font-size: 18px;
+  }
+
+  .treasure-header {
+    margin-top: 0;
+  }
+
+  .treasure-title {
+    font-size: 20px;
+  }
+
+  .slider-arrow-button {
+    font-size: 36px;
+    padding: 0;
+  }
+
+  .treasure-topic-text {
+    font-size: 15px;
+    margin-bottom: 4px;
+  }
+
+  .horizontal-egg-wrapper {
+    width: 260px;
+  }
+
+  .egg-text-overlay {
+    padding: 12px 20px;
+  }
+
+  .egg-answer-text {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .treasure-counter {
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  .treasure-empty-text {
+    font-size: 24px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面幅が狭い場合（幅 600px 以下：スマホ縦持ち）
+ * -------------------------------------------------- */
+@media (max-width: 600px) {
+  .treasure-container {
+    padding: 60px 12px 20px 12px;
+  }
+
+  .treasure-header {
+    margin-top: 0;
+  }
+
+  .treasure-title {
+    font-size: 28px;
+  }
+
+  .treasure-slider-area {
+    gap: 4px;
+  }
+
+  .slider-arrow-button {
+    font-size: 40px;
+    padding: 4px;
+  }
+
+  .treasure-topic-text {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+
+  .horizontal-egg-wrapper {
+    width: 100%;
+  }
+
+  .egg-text-overlay {
+    padding: 16px 28px;
+  }
+
+  .egg-answer-text {
+    font-size: 16px;
+  }
+
+  .treasure-counter {
+    font-size: 18px;
+  }
+
+  .treasure-empty-text {
+    font-size: 28px;
+  }
 }

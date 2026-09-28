@@ -50,19 +50,31 @@
   word-break: break-word;
 }
 
-/* ================= 投稿画像の敷き詰めエリア（縦スクロール） ================= */
+/* ================= 投稿画像の敷き詰めエリア ================= */
 .answers-scroll-area {
   width: 100vw;
   height: 100vh;
-  overflow-y: auto; /* 縦スクロール */
-  overflow-x: hidden; /* 横スクロール防止 */
-  padding-top: 150px; /* お題カードとの重なりを考慮した余白 */
-  padding-bottom: 100px; /* 下部ボタンと被らないように少し広めに確保 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 150px;
+  padding-bottom: 100px;
   box-sizing: border-box;
   scrollbar-width: none;
 }
 
-/* 画像を敷き詰めるグリッド配置 */
+/* 1〜3件の場合のフレックス中央寄せコンテナ */
+.answers-flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 400px;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* 4件以上の場合のグリッド配置 */
 .answers-egg-grid {
   display: flex;
   flex-direction: column;
@@ -77,16 +89,16 @@
   justify-content: flex-start;
 }
 
-/* 一段ごとの交互ずらし（奇数行を左へ半個分引っ張る） */
+/* 奇数行（2段目など）を左へ引き戻す設定 */
 .egg-row.offset-row {
   margin-left: calc(-100vw / 7);
 }
 
-/* 1つの卵カード */
+/* 1つの卵カード（元のサイズ: 幅 100vw / 3.5, 高さ 380px） */
 .egg-card-wrapper {
   position: relative;
   width: calc(100vw / 3.5);
-  height: 290px;
+  height: 380px;
   flex-shrink: 0;
   display: flex;
   justify-content: center;
@@ -98,6 +110,7 @@
 /* ダミー（半分表示用・文字なし）の卵 */
 .egg-card-wrapper.dummy-half-egg {
   pointer-events: none;
+  opacity: 0.9;
 }
 
 /* 共通の背景卵画像 */

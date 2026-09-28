@@ -8,6 +8,7 @@
   display: flex;
   flex-direction: column;
   background-color: #CBCBCB;
+  overflow: hidden;
 }
 
 /* 画面左上: 「◀ もどる」ボタン */
@@ -59,6 +60,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  min-height: 0; /* フレックスアイテムのスクロール崩れ防止 */
 }
 
 /* 横並び入力行（テキストボックス + ボタン） */
@@ -89,6 +92,7 @@
   background: #ACACAC;
   border: 3px solid #000000;
   border-radius: 5px;
+  flex-shrink: 0;
 }
 
 .ng-input-search {
@@ -111,9 +115,8 @@
   background: #ACACAC;
   border: 3px solid #000000;
   border-radius: 5px;
+  flex-shrink: 0;
 }
-
-
 
 /* 縦並び一覧コンテナ */
 .ng-list-container {
@@ -125,6 +128,8 @@
   border-radius: 12px;
   padding: 16px;
   overflow-y: auto;
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .ng-list-header {
@@ -172,6 +177,7 @@
   font-weight: 500;
   color: #1e293b;
   font-family: 'DotGothic16', sans-serif;
+  word-break: break-all;
 }
 
 .ng-delete-button {
@@ -184,6 +190,7 @@
   cursor: pointer;
   transition: opacity 0.2s;
   font-family: 'DotGothic16', sans-serif;
+  flex-shrink: 0;
 }
 
 .ng-delete-button:hover {
@@ -195,4 +202,145 @@
   color: #94a3b8;
   padding: 16px 0;
   font-size: 14px;
+}
+
+/* --------------------------------------------------
+ * 画面幅が狭い場合（タブレット・スマホ: 900px 以下）
+ * -------------------------------------------------- */
+@media (max-width: 900px) {
+  .ng-words-container {
+    padding: 16px;
+  }
+
+  .ng-back-button {
+    top: 12px;
+    left: 12px;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .back-arrow {
+    font-size: 18px;
+  }
+
+  .back-text {
+    font-size: 18px;
+    margin-bottom: 2px;
+  }
+
+  .ng-words-content {
+    margin-top: 40px;
+    gap: 10px;
+  }
+
+  .ng-input {
+    width: 100%;
+    height: 52px;
+    font-size: 16px;
+    border-width: 5px;
+    padding: 0 12px;
+  }
+
+  .ng-action-button {
+    width: 75px;
+    height: 52px;
+    font-size: 14px;
+  }
+
+  .ng-input-search {
+    height: 42px;
+    font-size: 14px;
+    padding: 0 12px;
+  }
+
+  .ng-action-button-search {
+    width: 75px;
+    height: 42px;
+    font-size: 14px;
+  }
+
+  .ng-list-container {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    max-height: calc(100vh - 200px);
+    margin-top: 4px;
+    padding: 12px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さが低い場合（高さ 700px 以下：ノートPC・横持ちスマホ等）
+ * -------------------------------------------------- */
+@media (max-height: 700px) {
+  .ng-words-container {
+    padding: 12px;
+  }
+
+  .ng-back-button {
+    top: 8px;
+    left: 8px;
+    padding: 4px 6px;
+  }
+
+  .back-arrow {
+    font-size: 16px;
+  }
+
+  .back-text {
+    font-size: 16px;
+  }
+
+  .ng-words-content {
+    margin-top: 28px;
+    gap: 8px;
+  }
+
+  .ng-input {
+    width: 100%;
+    height: 44px;
+    font-size: 15px;
+    border-width: 4px;
+    padding: 0 10px;
+  }
+
+  .ng-action-button {
+    width: 70px;
+    height: 44px;
+    font-size: 13px;
+  }
+
+  .ng-input-search {
+    height: 38px;
+    font-size: 13px;
+    padding: 0 10px;
+  }
+
+  .ng-action-button-search {
+    width: 70px;
+    height: 38px;
+    font-size: 13px;
+  }
+
+  .ng-list-container {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    max-height: calc(100vh - 150px);
+    margin-top: 2px;
+    padding: 10px;
+  }
+
+  .ng-item {
+    padding: 6px 10px;
+  }
+
+  .ng-word-text {
+    font-size: 14px;
+  }
+
+  .ng-delete-button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
 }

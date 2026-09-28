@@ -10,6 +10,7 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
+  overflow: hidden; /* 1画面内に収める */
 }
 
 /* 1. 上部: 先生の設定したお題表示 */
@@ -21,6 +22,9 @@
   padding: 12px 32px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   width: 80%;
+  max-width: 800px;
+  box-sizing: border-box;
+  flex-shrink: 0; /* お題領域の潰れ防止 */
 }
 
 .stock-topic-title {
@@ -33,16 +37,20 @@
   justify-content: center;
   padding-top: 0px;
   padding-bottom: 4px;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
-/* 2. 中央: 書き溜めエリア */
+/* 2. 中央: 書き溜めエリア (フェーズ1) */
 .stock-center-wrapper {
   position: relative;
-  width: 800px;
+  width: 100%;
+  max-width: 800px;
   flex: 1;
   margin: 5px 0;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* flexアイテム内の縮小を許可 */
 }
 
 /* 書き溜めエリア上部の注意書きスタイル */
@@ -56,6 +64,8 @@
   margin: 0 auto;
   line-height: 1.4;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  flex-shrink: 0;
 }
 
 /* LINE風吹き出し縦スクロールエリア */
@@ -71,6 +81,10 @@
   align-items: flex-start;
   gap: 16px;
   scrollbar-width: none; 
+}
+
+.stock-chat-area::-webkit-scrollbar {
+  display: none;
 }
 
 /* 下スクロール誘導: エリア下部のグラデーションフェード */
@@ -106,21 +120,7 @@
   align-items: center;
   gap: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  /* animation: bounce 1.8s infinite; */
 }
-
-/* 上下にゆらゆら揺れるバウンスアニメーション */
-/* @keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateX(-50%) translateY(0);
-  }
-  40% {
-    transform: translateX(-50%) translateY(-6px);
-  }
-  60% {
-    transform: translateX(-50%) translateY(-3px);
-  }
-} */
 
 /* LINE風吹き出しスタイル */
 .chat-bubble {
@@ -134,6 +134,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .chat-bubble:hover {
@@ -174,6 +175,9 @@
   align-items: center;
   gap: 12px;
   width: 80%;
+  max-width: 800px;
+  box-sizing: border-box;
+  flex-shrink: 0; /* 下部ボタン・入力欄の押し出し防止 */
 }
 
 /* テキストボックス + 内包型画像ボタンのラッパー */
@@ -187,7 +191,7 @@
 .stock-input-box {
   width: 100%;
   height: 80px;
-  padding: 0 48px 0 16px; /* 右側にアイコン用の余白を確保 */
+  padding: 0 68px 0 16px; /* 右側にアイコン用の余白を確保 */
   border: 7px solid #000000;
   border-radius: 12px;
   font-size: 30px;
@@ -237,6 +241,7 @@
   padding-bottom: 6px;
   color: #ffffff;
   transition: background-color 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .stock-confirm-button:hover {
@@ -250,35 +255,43 @@
   cursor: not-allowed;
 }
 
-/* フェーズ2 (アクション選択) 全体コンテナ */
+/* ==================================================
+ * フェーズ2 (アクション選択) 全体コンテナ & 卵画像レスポンシブ
+ * ================================================== */
 .action-phase-wrapper {
   flex: 1;
-  width: 800px;
+  min-height: 0; /* flex内の自動縮小を有効化 */
+  width: 100%;
+  max-width: 800px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  margin: 16px 0;
+  margin: 8px 0;
+  box-sizing: border-box;
 }
 
-/* 中央: 画像・プレビューカード */
-
-/* 親要素：基準位置 */
+/* 中央: 画像・プレビューカード (レスポンシブ可変枠) */
 .action-illustration-box {
   position: relative;
-  width: 550px;
+  flex: 1; /* 空きスペースに応じて自動伸縮 */
+  min-height: 0; /* フレックス要素内のオーバーフロー防止 */
+  width: 100%;
+  max-width: 550px;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 35px auto 0 auto;
+  margin: 0 auto;
+  box-sizing: border-box;
 }
 
-/* 画像本体 */
+/* 卵画像本体 (アスペクト比を維持して枠に収まる) */
 .action-illustration {
   width: 100%;
-  height: auto;
-
-  object-fit: contain;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain; /* アスペクト比を保持 */
   display: block;
 }
 
@@ -288,46 +301,56 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 80%; /* ボード領域内に納めるための横幅制限 */
+  width: 75%; /* ボード領域内に納めるための横幅制限 */
+  max-height: 60%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   pointer-events: none;
   z-index: 10;
+  overflow: hidden;
 }
 
-/* お題テキストのみを表示 */
+/* お題テキスト (画像サイズに連動してフォントサイズ可変) */
 .preview-text {
-  font-size: 25px;
+  font-size: clamp(14px, 3.5vw, 25px); /* 最小14px〜最大25px */
   width: 100%;
   font-weight: bold;
   color: #1e293b;
   margin: 0;
   word-break: break-word;
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
-/* 下部: ボタン配置行 */
+/* 下部: ボタン配置行 (絶対隠れないよう固定化) */
 .action-buttons-row {
   width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 16px;
-  gap: 30px;
+  margin-top: 12px;
+  gap: 20px;
+  box-sizing: border-box;
+  flex-shrink: 0; /* 画面外へ隠れるのを防止 */
 }
 
 .action-toggle-btn {
-  height: 100px;
-  width: 350px;
+  height: 90px;
+  width: 100%;
+  max-width: 350px;
   background-color: #FFEE00;
   border: 8px solid #000000;
   border-radius: 1.3rem;
-  font-size: 40px;
+  font-size: 36px;
+  font-weight: bold;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-top: 10px;
-  padding-bottom: 15px;
+  padding-top: 6px;
+  padding-bottom: 10px;
   transition: background-color 0.2s ease, transform 0.2s ease;
+  box-sizing: border-box;
 }
 
 .action-toggle-btn:hover {
@@ -337,19 +360,22 @@
 }
 
 .action-toggle-btn-primary {
-  height: 100px;
-  width: 350px;
+  height: 90px;
+  width: 100%;
+  max-width: 350px;
   background-color: #FF3333;
   border: 8px solid #000000;
   border-radius: 1.3rem;
-  font-size: 40px;
+  font-size: 36px;
+  font-weight: bold;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-top: 10px;
-  padding-bottom: 15px;
+  padding-top: 6px;
+  padding-bottom: 10px;
   transition: background-color 0.2s ease, transform 0.2s ease;
   color: #ffffff;
+  box-sizing: border-box;
 }
 
 .action-toggle-btn-primary:hover {
@@ -358,10 +384,9 @@
   border: 9px solid #525252;
 }
 
-
-/* answer.css の末尾に追加するスタイリング */
-
-/* モーダル */
+/* ==================================================
+ * モーダル
+ * ================================================== */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -373,11 +398,15 @@
   justify-content: center;
   align-items: center;
   z-index: 100;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .modal-card {
-  height: 500px;
+  min-height: 400px;
+  max-height: 90vh;
   width: 800px;
+  max-width: 100%;
   background-color: rgba(100, 116, 139, 0.95);
   border: 4px solid #000000;
   border-radius: 16px;
@@ -388,6 +417,7 @@
   align-items: center;
   gap: 16px;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 /* 1文目：お題表示 */
@@ -409,7 +439,7 @@
   margin: 0;
   line-height: 1.4;
   font-family: 'DotGothic16', sans-serif;
-  height: 110px;
+  min-height: 60px;
 }
 
 .modal-topic-highlight {
@@ -432,14 +462,16 @@
 /* ボタンエリア */
 .modal-buttons-row {
   display: flex;
-  gap: 50px;
+  gap: 30px;
   width: 100%;
   justify-content: center;
-  margin-top: 40px;
+  margin-top: auto;
+  padding-top: 16px;
 }
 
 .modal-btn {
   width: 220px;
+  max-width: 100%;
   height: 80px;
   border-radius: 10px;
   font-size: 30px;
@@ -475,4 +507,151 @@
   background-color: #ff7171;
   border: 5px solid #525252;
   transform: translateY(-2px) scale(1.02);
+}
+
+/* --------------------------------------------------
+ * 画面幅が狭い場合（タブレット・スマホ: 900px 以下）
+ * -------------------------------------------------- */
+@media (max-width: 900px) {
+  .stock-container {
+    padding: 12px;
+  }
+
+  .stock-main-topic {
+    width: 100%;
+    padding: 8px 16px;
+    border-width: 5px;
+  }
+
+  .stock-topic-title {
+    font-size: 22px;
+  }
+
+  .chat-text {
+    font-size: 18px;
+  }
+
+  .stock-input-area {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .stock-input-box {
+    height: 60px;
+    font-size: 20px;
+    border-width: 5px;
+    padding-right: 50px;
+  }
+
+  .stock-send-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stock-confirm-button {
+    width: 100px;
+    height: 60px;
+    font-size: 24px;
+    border-width: 5px;
+  }
+
+  .action-buttons-row {
+    gap: 12px;
+  }
+
+  .action-toggle-btn,
+  .action-toggle-btn-primary {
+    height: 60px;
+    font-size: 22px;
+    border-width: 5px;
+    padding-top: 2px;
+    padding-bottom: 4px;
+  }
+
+  .modal-card {
+    padding: 20px 16px;
+    min-height: auto;
+  }
+
+  .modal-subtext {
+    font-size: 20px;
+  }
+
+  .modal-message-topic {
+    font-size: 22px;
+    min-height: auto;
+  }
+
+  .modal-buttons-row {
+    gap: 12px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .modal-btn {
+    width: 100%;
+    height: 56px;
+    font-size: 22px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さが低い場合（高さ 700px 以下：ノートPC・横持ち端末等）
+ * -------------------------------------------------- */
+@media (max-height: 700px) {
+  .stock-container {
+    padding: 10px;
+  }
+
+  .stock-main-topic {
+    padding: 6px 14px;
+    border-width: 4px;
+  }
+
+  .stock-topic-title {
+    font-size: 20px;
+  }
+
+  .stock-input-box {
+    height: 54px;
+    font-size: 18px;
+    border-width: 4px;
+  }
+
+  .stock-send-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .stock-confirm-button {
+    height: 54px;
+    font-size: 22px;
+    border-width: 4px;
+  }
+
+  .action-buttons-row {
+    margin-top: 8px;
+    gap: 12px;
+  }
+
+  .action-toggle-btn,
+  .action-toggle-btn-primary {
+    height: 52px;
+    font-size: 20px;
+    border-width: 4px;
+  }
+
+  .modal-card {
+    padding: 16px;
+    min-height: auto;
+  }
+
+  .modal-subtext {
+    font-size: 18px;
+  }
+
+  .modal-btn {
+    height: 50px;
+    font-size: 20px;
+  }
 }

@@ -1,26 +1,30 @@
 .login-container {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: url('/images/contents/login-back.png');
+  background-image: url('/images/contents/login-back.gif');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  padding: 1rem;
+  padding: 1.5rem;
+  box-sizing: border-box;
 }
 
+/* デフォルト（通常時）のスタイル */
 .login-form {
   display: flex;
   flex-direction: column;
   gap: 1.0rem;
-  margin-top: auto;
-  margin-bottom: 15px;
+  width: 100%;
+  max-width: 380px;
+  margin: auto 0 15px 0;
 }
 
 .login-input {
+  width: 100%;
   height: 70px;
-  width: 380px;
   font-size: 30px;
   padding: 0.5rem 1rem;
   border: 7px solid #000000;
@@ -35,8 +39,8 @@
 }
 
 .start-button {
+  width: 100%;
   height: 120px;
-  width: 380px;
   font-size: 60px;
   font-weight: bold;
   background-color: #FF3333;
@@ -54,6 +58,52 @@
 
 .start-button:hover {
   background-color: #ff7171;
-  border: 9px solid #525252;
+  border-color: #525252;
   transform: translateY(-2px) scale(1.02);
+}
+
+/* --------------------------------------------------
+ * 画面の高さが少し低くなったとき（高さ 700px 以下）
+ * -------------------------------------------------- */
+@media (max-height: 700px) {
+  .login-form {
+    gap: 0.75rem;
+    margin-bottom: 10px;
+  }
+
+  .login-input {
+    height: 50px;
+    font-size: 22px;
+    border-width: 5px;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .start-button {
+    height: 85px;
+    font-size: 40px;
+    border-width: 6px;
+    padding: 0;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さがかなり低くなったとき（高さ 500px 以下：横持ちスマホなど）
+ * -------------------------------------------------- */
+@media (max-height: 500px) {
+  .login-form {
+    gap: 0.4rem;
+    margin-bottom: 5px;
+  }
+
+  .login-input {
+    height: 38px;
+    font-size: 16px;
+    border-width: 3px;
+  }
+
+  .start-button {
+    height: 55px;
+    font-size: 26px;
+    border-width: 4px;
+  }
 }

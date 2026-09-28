@@ -1,14 +1,15 @@
 /* 画面全体のコンテナ（スクロール領域） */
 .zoo-container {
   position: relative;
-  /* 100vw から 100% に変更（スクロールバーによる幅の膨張を防ぐ） */
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
+
 /* 縦2画面分 (200vh) のスクロール用背景コンテンツ */
 .zoo-scroll-content {
   position: relative;
@@ -29,9 +30,9 @@
   z-index: 100;
   background-color: rgba(228, 228, 228, 0.8);
   color: #000000;
-  font-size: 20px;
+  font-size: clamp(14px, 2vw, 20px);
   font-weight: bold;
-  padding: 10px 24px;
+  padding: 8px 20px;
   border-radius: 30px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   pointer-events: none;
@@ -47,57 +48,75 @@
   }
 }
 
-/* --- すべてのボタン・UIエリア（常時固定表示） --- */
+/* --- UI固定エリア (ベース定義) --- */
 
 /* 左上: ログアウトボタン */
 .top-left-area {
   position: fixed;
-  top: 20px;
-  left: 20px;
-  z-index: 10;
+  top: clamp(10px, 2vh, 20px);
+  left: clamp(10px, 2vw, 20px);
+  z-index: 100;
   text-align: center;
 }
 
-/* --- ガチャメーター専用エリア (常に固定位置) --- */
+.logout-btn {
+  height: 70px;
+  width: 200px;
+  background-color: #CBCBCB;
+  border: 6px solid #000000;
+  border-radius: 1.3rem;
+  font-size: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 15px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-sizing: border-box;
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  background-color: #EEEEEE;
+  border-color: #4b4b4b;
+}
+
+.user-info {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 4px 10px;
+  font-size: 14px;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+}
+
+/* 右上: ガチャメーターエリア */
 .top-right-gacha-area {
   position: fixed;
-  top: 24px !important;    /* 厳格に上端位置を固定 */
-  right: 24px !important;  /* 厳格に右端位置を固定 */
-  z-index: 100;            /* 他の要素より確実に前に出す */
+  top: clamp(10px, 2vh, 24px);
+  right: clamp(10px, 2vw, 24px);
+  z-index: 100;
   width: max-content;
-  
-  /* 描画タイミングのバグを回避するためのGPUアクセラレーション */
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
 
-/* 教員用ボタンエリア */
-.top-right-teacher-area {
-  position: fixed;
-  top: 110px; /* ガチャメーターの高さ（約70px）＋余白に合わせて調整 */
-  right: 24px;
-  z-index: 20;
-  width: max-content;
-}
-
-/* ガチャメーターUI本体 */
 .gacha-meter-container-home {
   display: flex;
   align-items: center;
   gap: 12px;
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px); /* iOS/Safari対策 */
+  -webkit-backdrop-filter: blur(8px);
   padding: 10px 18px;
   border-radius: 40px;
   border: 3px solid #FFFFFF;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   box-sizing: border-box;
-  
-  /* --- 修正ポイント --- */
-  width: max-content;            /* auto ではなく max-content で幅の縮みを固く防止 */
-  transform: translateZ(0);      /* レンダリング計算のレイアウトシフトバグを防止 */
-  will-change: transform;        /* 描画の優先度を上げて切り替わり時のサイズ崩れを防ぐ */
+  width: max-content;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .gacha-meter-label {
@@ -111,10 +130,9 @@
   white-space: nowrap;
 }
 
-/* バーの外枠 (固定幅を設定して潰れを防ぐ) */
 .gacha-meter-bar-outer {
-  width: 160px;           /* ゲージ本体の幅を固定 */
-  flex-shrink: 0;         /* 画面サイズ変更で縮まないように保護 */
+  width: 160px;
+  flex-shrink: 0;
   height: 20px;
   background-color: #E2E8F0;
   border-radius: 10px;
@@ -130,12 +148,11 @@
   transition: width 0.5s ease-in-out;
 }
 
-/* 卵アイコン領域 */
 .gacha-meter-eggs {
   display: flex;
   align-items: center;
   gap: 0px;
-  flex-shrink: 0;         /* アイコン群が縮むのを防止 */
+  flex-shrink: 0;
 }
 
 .gacha-egg-icon {
@@ -155,32 +172,13 @@
   filter: grayscale(80%);
 }
 
-/* 中央下: お題を決めるボタン */
-.bottom-center-area {
+/* 右上: 教員用アクションボタンエリア */
+.top-right-teacher-area {
   position: fixed;
-  bottom: 150px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-}
-
-/* 最下部: 宝箱・称号ボタンエリア */
-.bottom-bar {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  right: 24px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 100px;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.bottom-left-area,
-.bottom-right-area {
-  pointer-events: auto;
+  top: clamp(80px, 12vh, 110px);
+  right: clamp(10px, 2vw, 24px);
+  z-index: 20;
+  width: max-content;
 }
 
 .teacher-actions-column {
@@ -272,56 +270,13 @@
   background-color: #1B8DFF;
 }
 
-.home-btn {
-  height: 100px;
-  width: 350px;
-  background-color: #FFEE00;
-  border: 8px solid #000000;
-  border-radius: 1.3rem;
-  font-size: 40px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 10px;
-  padding-bottom: 15px;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.home-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  background-color: #FFF897;
-  border: 8px solid #3F3F3F;
-}
-
-.logout-btn {
-  height: 70px;
-  width: 200px;
-  background-color: #CBCBCB;
-  border: 6px solid #000000;
-  border-radius: 1.3rem;
-  font-size: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding-top: 10px;
-  padding-bottom: 15px;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-}
-
-.logout-btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  background-color: #EEEEEE;
-  border: 6px solid #4b4b4b;
-}
-
-.user-info {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 4px 10px;
-  font-size: 16px;
-  color: #ffffff;
-  background-color: rgba(0, 0, 0, 0.6);
-  border-radius: 6px;
+/* 中央下: お題を決めるボタン */
+.bottom-center-area {
+  position: fixed;
+  bottom: clamp(100px, 18vh, 150px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 
 .topic-btn-teacher {
@@ -338,6 +293,7 @@
   padding-top: 10px;
   padding-bottom: 18px;
   transition: background-color 0.2s ease, transform 0.2s ease;
+  box-sizing: border-box;
 }
 
 .topic-btn-teacher:hover {
@@ -346,13 +302,203 @@
   transform: translateY(-2px) scale(1.02);
 }
 
+/* 最下部: 宝箱・称号ボタンエリア */
+.bottom-bar {
+  position: fixed;
+  bottom: clamp(10px, 3vh, 24px);
+  left: clamp(10px, 3vw, 24px);
+  right: clamp(10px, 3vw, 24px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(20px, 8vw, 100px);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.bottom-left-area,
+.bottom-right-area {
+  pointer-events: auto;
+}
+
+.home-btn {
+  height: 100px;
+  width: 350px;
+  background-color: #FFEE00;
+  border: 8px solid #000000;
+  border-radius: 1.3rem;
+  font-size: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 15px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-sizing: border-box;
+}
+
+.home-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  background-color: #FFF897;
+  border-color: #3F3F3F;
+}
+
+/* 動物配置アイテム */
 .placed-animal-wrapper {
   pointer-events: none;
   z-index: 10;
 }
 
 .placed-animal-img {
-  width: 120px;
+  width: clamp(60px, 8vw, 120px);
   height: auto;
   display: block;
+}
+
+/* --------------------------------------------------
+ * 画面幅が狭い場合（タブレット・スマホ: 900px 以下）
+ * -------------------------------------------------- */
+@media (max-width: 900px) {
+  .logout-btn {
+    width: 140px;
+    height: 50px;
+    font-size: 20px;
+    border-width: 4px;
+    padding: 0;
+  }
+
+  .home-btn {
+    width: clamp(140px, 38vw, 250px);
+    height: clamp(60px, 9vh, 80px);
+    font-size: clamp(20px, 4vw, 30px);
+    border-width: 5px;
+    padding: 0;
+  }
+
+  .topic-btn-teacher {
+    width: clamp(200px, 50vw, 280px);
+    height: clamp(65px, 10vh, 85px);
+    font-size: clamp(22px, 4.5vw, 32px);
+    border-width: 6px;
+    padding: 0;
+  }
+
+  .topic-btn-teacher:hover {
+    border-width: 6px;
+    border-color: #525252;
+  }
+
+  .NG-teacher-btn,
+  .summary-teacher-btn {
+    width: 180px;
+    height: 52px;
+    font-size: 20px;
+    padding-left: 24px;
+    padding-right: 10px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 4px;
+  }
+
+  .overlap-icon {
+    left: -20px;
+    width: 45px;
+    height: 45px;
+  }
+
+  .gacha-meter-container-home {
+    padding: 6px 12px;
+    gap: 8px;
+  }
+
+  .gacha-meter-bar-outer {
+    width: 100px;
+    height: 14px;
+  }
+
+  .gacha-egg-icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .gacha-meter-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さが低い場合（高さ 700px 以下：ノートPC・横持ちスマホ等）
+ * -------------------------------------------------- */
+@media (max-height: 700px) {
+  .logout-btn {
+    height: 45px;
+    width: 130px;
+    font-size: 18px;
+    border-width: 4px;
+    padding: 0;
+  }
+
+  .user-info {
+    font-size: 11px;
+  }
+
+  .top-right-teacher-area {
+    top: 65px;
+  }
+
+  .NG-teacher-btn,
+  .summary-teacher-btn {
+    height: 45px;
+    width: 160px;
+    font-size: 17px;
+    border-width: 3px;
+    padding-left: 20px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .overlap-icon {
+    left: -15px;
+    width: 38px;
+    height: 38px;
+  }
+
+  .gacha-meter-container-home {
+    padding: 4px 10px;
+  }
+
+  .gacha-meter-bar-outer {
+    width: 90px;
+    height: 12px;
+  }
+
+  .gacha-egg-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .bottom-center-area {
+    bottom: 75px;
+  }
+
+  .topic-btn-teacher {
+    height: 60px;
+    width: 220px;
+    font-size: 24px;
+    border-width: 5px;
+    padding: 0;
+  }
+
+  .topic-btn-teacher:hover {
+    border-width: 5px;
+    border-color: #525252;
+  }
+
+  .home-btn {
+    height: 55px;
+    width: 200px;
+    font-size: 24px;
+    border-width: 5px;
+    padding: 0;
+  }
 }
