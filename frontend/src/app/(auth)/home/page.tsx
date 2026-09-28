@@ -51,34 +51,29 @@ export default function ZooHomePage() {
   // 配置情報取得ロジック
   const fetchPlacements = useCallback(async (cId: number) => {
     try {
-      const { data, error } = await supabase
-        .from('zoo_placements')
-        .select(`
-          placement_id,
-          x_coord,
-          y_coord,
-          items (
-            item_name,
-            item_image
-          )
-        `)
-        .eq('class_id', cId);
+      const { data, error } = await supabase.rpc(
+        'get_zoo_placements',
+        {
+          p_class_id: cId,
+        }
+      );
 
       if (error) {
-        console.error('Supabase取得失敗:', error);
+        console.error('get_zoo_placements取得失敗:', error);
         return;
       }
 
-      if (data && data.length > 0) {
-        const formatted: PlacedAnimal[] = data.map((item: any) => ({
+      const formatted: PlacedAnimal[] = (data ?? []).map(
+        (item: any) => ({
           placement_id: item.placement_id,
           x_coord: item.x_coord,
           y_coord: item.y_coord,
-          item_name: item.items?.item_name || '名称不明',
-          item_image: item.items?.item_image || 'default.png',
-        }));
-        setPlacedAnimals(formatted);
-      }
+          item_name: item.item_name || '名称不明',
+          item_image: item.item_image || 'default.png',
+        })
+      );
+
+      setPlacedAnimals(formatted);
     } catch (err) {
       console.error('通信エラー:', err);
     }

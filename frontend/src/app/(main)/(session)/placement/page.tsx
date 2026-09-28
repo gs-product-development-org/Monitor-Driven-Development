@@ -102,19 +102,16 @@ const FALLBACK_ITEMS: ItemToPlace[] = [
     item_id: 1,
     item_name: 'ライオン',
     item_image: 'lion.png',
-    class_id: 1,
   },
   {
     item_id: 2,
     item_name: 'ペンギン',
     item_image: 'penguin.png',
-    class_id: 1,
   },
   {
     item_id: 3,
     item_name: 'ゾウ',
     item_image: 'elephant.png',
-    class_id: 1,
   },
 ];
 
@@ -131,57 +128,94 @@ export default function PlaceAnimalPage() {
     isLoading: isSyncLoading,
   } = useSync();
 
-  const { savePlacement, loading: isSaving } = useSaveZooPlacement();
+  const {
+    savePlacement,
+    loading: isSaving,
+  } = useSaveZooPlacement();
 
   // ==============================
   // State
   // ==============================
 
-  const [itemsToPlace, setItemsToPlace] = useState<ItemToPlace[]>([]);
+  const [itemsToPlace, setItemsToPlace] =
+    useState<ItemToPlace[]>([]);
 
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [currentIndex, setCurrentIndex] =
+    useState<number>(0);
 
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [selectedAreaId, setSelectedAreaId] =
+    useState<string | null>(null);
 
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] =
+    useState<boolean>(false);
 
+  // ==============================
   // Broadcast channel
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(
-    null
-  );
+  // ==============================
 
+  const channelRef =
+    useRef<ReturnType<typeof supabase.channel> | null>(
+      null
+    );
+
+  // ==============================
   // 初期化済み判定
-  const initializedRef = useRef(false);
+  // ==============================
+
+  const initializedRef =
+    useRef(false);
 
   // ==============================
   // classId取得
   // ==============================
 
   const resolvedClassId = (): number | null => {
+    // ------------------------------
+    // まずuseSync()のclassIdを使用
+    // ------------------------------
+
     if (classId) {
       const parsed = Number(classId);
 
-      if (!Number.isNaN(parsed)) {
+      if (
+        !Number.isNaN(parsed) &&
+        parsed > 0
+      ) {
         return parsed;
       }
     }
 
+    // ------------------------------
+    // fallbackとしてsessionStorage
+    // ------------------------------
+
     try {
-      const raw = sessionStorage.getItem('user_info');
+      const raw =
+        sessionStorage.getItem(
+          'user_info'
+        );
 
       if (!raw) {
         return null;
       }
 
-      const userInfo = JSON.parse(raw);
+      const userInfo =
+        JSON.parse(raw);
 
-      const parsed = Number(userInfo.class_id);
+      const parsed =
+        Number(userInfo.class_id);
 
-      if (!Number.isNaN(parsed)) {
+      if (
+        !Number.isNaN(parsed) &&
+        parsed > 0
+      ) {
         return parsed;
       }
     } catch (error) {
-      console.error('user_infoの読み込みに失敗:', error);
+      console.error(
+        'user_infoの読み込みに失敗:',
+        error
+      );
     }
 
     return null;
@@ -195,10 +229,13 @@ export default function PlaceAnimalPage() {
     event: string,
     payload: unknown
   ) => {
-    const channel = channelRef.current;
+    const channel =
+      channelRef.current;
 
     if (!channel) {
-      console.warn('Broadcast channelが存在しません');
+      console.warn(
+        'Broadcast channelが存在しません'
+      );
       return;
     }
 
@@ -225,21 +262,26 @@ export default function PlaceAnimalPage() {
       return;
     }
 
-    const resolvedId = resolvedClassId();
+    const resolvedId =
+      resolvedClassId();
 
     if (!resolvedId) {
-      console.error('classIdを取得できません');
+      console.error(
+        'classIdを取得できません'
+      );
       return;
     }
 
-    const channelName = `classroom_placement_${resolvedId}`;
+    const channelName =
+      `classroom_placement_${resolvedId}`;
 
     console.log(
       'placement Broadcast channel作成:',
       channelName
     );
 
-    const channel = supabase.channel(channelName);
+    const channel =
+      supabase.channel(channelName);
 
     channelRef.current = channel;
 
@@ -249,7 +291,9 @@ export default function PlaceAnimalPage() {
 
     channel.on(
       'broadcast',
-      { event: 'PLACEMENT_INIT' },
+      {
+        event: 'PLACEMENT_INIT',
+      },
       ({ payload }) => {
         console.log(
           'PLACEMENT_INIT受信:',
@@ -267,9 +311,15 @@ export default function PlaceAnimalPage() {
           return;
         }
 
-        setItemsToPlace(data.items);
+        setItemsToPlace(
+          data.items
+        );
+
         setCurrentIndex(0);
-        setSelectedAreaId(null);
+
+        setSelectedAreaId(
+          null
+        );
       }
     );
 
@@ -279,7 +329,9 @@ export default function PlaceAnimalPage() {
 
     channel.on(
       'broadcast',
-      { event: 'PLACEMENT_SELECT' },
+      {
+        event: 'PLACEMENT_SELECT',
+      },
       ({ payload }) => {
         console.log(
           'PLACEMENT_SELECT受信:',
@@ -289,7 +341,10 @@ export default function PlaceAnimalPage() {
         const data =
           payload as PlacementSelectPayload;
 
-        setCurrentIndex(data.currentIndex);
+        setCurrentIndex(
+          data.currentIndex
+        );
+
         setSelectedAreaId(
           data.selectedAreaId
         );
@@ -302,7 +357,9 @@ export default function PlaceAnimalPage() {
 
     channel.on(
       'broadcast',
-      { event: 'PLACEMENT_NEXT' },
+      {
+        event: 'PLACEMENT_NEXT',
+      },
       ({ payload }) => {
         console.log(
           'PLACEMENT_NEXT受信:',
@@ -312,8 +369,13 @@ export default function PlaceAnimalPage() {
         const data =
           payload as PlacementNextPayload;
 
-        setCurrentIndex(data.currentIndex);
-        setSelectedAreaId(null);
+        setCurrentIndex(
+          data.currentIndex
+        );
+
+        setSelectedAreaId(
+          null
+        );
       }
     );
 
@@ -323,7 +385,9 @@ export default function PlaceAnimalPage() {
 
     channel.on(
       'broadcast',
-      { event: 'PLACEMENT_COMPLETE' },
+      {
+        event: 'PLACEMENT_COMPLETE',
+      },
       ({ payload }) => {
         console.log(
           'PLACEMENT_COMPLETE受信:',
@@ -356,14 +420,21 @@ export default function PlaceAnimalPage() {
       );
     });
 
+    // ------------------------------
+    // Cleanup
+    // ------------------------------
+
     return () => {
       console.log(
         'placement Broadcast channel解除'
       );
 
-      channelRef.current = null;
+      channelRef.current =
+        null;
 
-      supabase.removeChannel(channel);
+      supabase.removeChannel(
+        channel
+      );
     };
   }, [
     isSyncLoading,
@@ -380,7 +451,9 @@ export default function PlaceAnimalPage() {
       return;
     }
 
-    if (initializedRef.current) {
+    if (
+      initializedRef.current
+    ) {
       return;
     }
 
@@ -390,13 +463,20 @@ export default function PlaceAnimalPage() {
           GACHA_RESULT_ITEMS_KEY
         );
 
+      // ------------------------------
+      // sessionStorageにガチャ結果がある場合
+      // ------------------------------
+
       if (savedData) {
         try {
-          const parsedItems: ItemToPlace[] =
+          const parsedItems:
+            ItemToPlace[] =
             JSON.parse(savedData);
 
           if (
-            Array.isArray(parsedItems) &&
+            Array.isArray(
+              parsedItems
+            ) &&
             parsedItems.length > 0
           ) {
             console.log(
@@ -404,9 +484,12 @@ export default function PlaceAnimalPage() {
               parsedItems
             );
 
-            setItemsToPlace(parsedItems);
+            setItemsToPlace(
+              parsedItems
+            );
 
-            initializedRef.current = true;
+            initializedRef.current =
+              true;
 
             return parsedItems;
           }
@@ -418,33 +501,45 @@ export default function PlaceAnimalPage() {
         }
       }
 
-      // セッションにない場合はフォールバック
+      // ------------------------------
+      // セッションにない場合
+      // フォールバックを使用
+      // ------------------------------
+
       console.warn(
         'ガチャ結果が存在しないため、フォールバックデータを使用します'
       );
 
-      setItemsToPlace(FALLBACK_ITEMS);
+      setItemsToPlace(
+        FALLBACK_ITEMS
+      );
 
-      initializedRef.current = true;
+      initializedRef.current =
+        true;
 
       return FALLBACK_ITEMS;
     };
 
-    const items = loadItems();
+    const items =
+      loadItems();
 
     // ==============================
     // 先生だけ初期データをBroadcast
     // ==============================
 
-    if (isTeacher && items.length > 0) {
-      const timer = setTimeout(() => {
-        broadcastEvent(
-          'PLACEMENT_INIT',
-          {
-            items,
-          }
-        );
-      }, 500);
+    if (
+      isTeacher &&
+      items.length > 0
+    ) {
+      const timer =
+        setTimeout(() => {
+          broadcastEvent(
+            'PLACEMENT_INIT',
+            {
+              items,
+            }
+          );
+        }, 500);
 
       return () => {
         clearTimeout(timer);
@@ -459,10 +554,13 @@ export default function PlaceAnimalPage() {
   // 現在のアイテム
   // ==============================
 
-  const totalItems = itemsToPlace.length;
+  const totalItems =
+    itemsToPlace.length;
 
   const currentItem =
-    itemsToPlace[currentIndex];
+    itemsToPlace[
+      currentIndex
+    ];
 
   // ==============================
   // エリア選択
@@ -471,7 +569,10 @@ export default function PlaceAnimalPage() {
   const handleSelectArea = (
     areaId: string
   ) => {
+    // ------------------------------
     // 生徒は操作しない
+    // ------------------------------
+
     if (!isTeacher) {
       return;
     }
@@ -485,7 +586,10 @@ export default function PlaceAnimalPage() {
       nextSelectedAreaId
     );
 
+    // ------------------------------
     // 全員に選択状態を同期
+    // ------------------------------
+
     broadcastEvent(
       'PLACEMENT_SELECT',
       {
@@ -500,135 +604,208 @@ export default function PlaceAnimalPage() {
   // OKボタン
   // ==============================
 
-  const handleConfirm = async () => {
-    if (
-      !isTeacher ||
-      !selectedAreaId ||
-      !currentItem ||
-      isSubmitting ||
-      isSaving
-    ) {
-      return;
-    }
+  const handleConfirm =
+    async () => {
+      if (
+        !isTeacher ||
+        !selectedAreaId ||
+        !currentItem ||
+        isSubmitting ||
+        isSaving
+      ) {
+        return;
+      }
 
-    // ------------------------------
-    // エリア取得
-    // ------------------------------
-
-    const selectedArea =
-      ZOO_AREAS.find(
-        (area) =>
-          area.id === selectedAreaId
-      );
-
-    if (!selectedArea) {
-      return;
-    }
-
-    // ------------------------------
-    // パラメータ
-    // ------------------------------
-
-    const p_item_id =
-      currentItem.item_id ||
-      currentItem.obtained_item_id ||
-      1;
-
-    const p_area_id =
-      selectedArea.numericId;
-
-    const p_class_id =
-      currentItem.class_id ||
-      resolvedClassId() ||
-      1;
-
-    setIsSubmitting(true);
-
-    try {
       // ------------------------------
-      // DB保存
+      // エリア取得
       // ------------------------------
 
-      const data =
-        await savePlacement({
-          itemId: p_item_id,
-          areaId: p_area_id,
-          classId: p_class_id,
-        });
+      const selectedArea =
+        ZOO_AREAS.find(
+          (area) =>
+            area.id ===
+            selectedAreaId
+        );
 
-      if (!data) {
+      if (!selectedArea) {
+        return;
+      }
+
+      // ------------------------------
+      // item_id取得
+      // ------------------------------
+
+      const p_item_id =
+        currentItem.item_id ??
+        currentItem.obtained_item_id;
+
+      if (!p_item_id) {
         console.error(
-          '配置データの保存に失敗しました'
+          'item_idを取得できません:',
+          currentItem
         );
 
         alert(
-          '配置の保存に失敗しました。もう一度お試しください。'
+          '配置するアイテムのitem_idを取得できません。'
         );
 
         return;
       }
+
+      // ------------------------------
+      // area_id
+      // ------------------------------
+
+      const p_area_id =
+        selectedArea.numericId;
+
+      // ------------------------------
+      // class_id取得
+      // ------------------------------
+      //
+      // 重要：
+      // currentItem.class_idは使用しない。
+      //
+      // 配置先のclass_idは、
+      // 現在ログインしているユーザーの
+      // class_idを使用する。
+      // ------------------------------
+
+      const resolvedId =
+        resolvedClassId();
+
+      if (!resolvedId) {
+        console.error(
+          'class_idを取得できません'
+        );
+
+        alert(
+          'class_idを取得できません。もう一度ログインしてください。'
+        );
+
+        return;
+      }
+
+      const p_class_id =
+        resolvedId;
 
       console.log(
-        '配置成功:',
-        data
-      );
-
-      // ------------------------------
-      // 次のアイテムがある
-      // ------------------------------
-
-      if (
-        currentIndex + 1 <
-        totalItems
-      ) {
-        const nextIndex =
-          currentIndex + 1;
-
-        setCurrentIndex(nextIndex);
-        setSelectedAreaId(null);
-
-        // 全員を次の動物へ
-        await broadcastEvent(
-          'PLACEMENT_NEXT',
-          {
-            currentIndex:
-              nextIndex,
-          }
-        );
-
-        return;
-      }
-
-      // ------------------------------
-      // 全アイテム配置完了
-      // ------------------------------
-
-      sessionStorage.removeItem(
-        GACHA_RESULT_ITEMS_KEY
-      );
-
-      await broadcastEvent(
-        'PLACEMENT_COMPLETE',
+        '配置保存パラメータ:',
         {
-          completed: true,
+          item_id: p_item_id,
+          area_id: p_area_id,
+          class_id: p_class_id,
+          currentItem,
         }
       );
 
-      // 自分自身もhomeへ
-      router.push('/home');
-    } catch (error) {
-      console.error(
-        '通信エラー:',
-        error
+      setIsSubmitting(
+        true
       );
 
-      alert(
-        'エラーが発生しました。'
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      try {
+        // ==============================
+        // DB保存
+        // ==============================
+
+        const data =
+          await savePlacement({
+            itemId:
+              p_item_id,
+            areaId:
+              p_area_id,
+            classId:
+              p_class_id,
+          });
+
+        if (!data) {
+          console.error(
+            '配置データの保存に失敗しました'
+          );
+
+          alert(
+            '配置の保存に失敗しました。もう一度お試しください。'
+          );
+
+          return;
+        }
+
+        console.log(
+          '配置成功:',
+          data
+        );
+
+        // ==============================
+        // 次のアイテムがある
+        // ==============================
+
+        if (
+          currentIndex + 1 <
+          totalItems
+        ) {
+          const nextIndex =
+            currentIndex + 1;
+
+          setCurrentIndex(
+            nextIndex
+          );
+
+          setSelectedAreaId(
+            null
+          );
+
+          // ------------------------------
+          // 全員を次の動物へ
+          // ------------------------------
+
+          await broadcastEvent(
+            'PLACEMENT_NEXT',
+            {
+              currentIndex:
+                nextIndex,
+            }
+          );
+
+          return;
+        }
+
+        // ==============================
+        // 全アイテム配置完了
+        // ==============================
+
+        sessionStorage.removeItem(
+          GACHA_RESULT_ITEMS_KEY
+        );
+
+        await broadcastEvent(
+          'PLACEMENT_COMPLETE',
+          {
+            completed: true,
+          }
+        );
+
+        // ------------------------------
+        // 自分自身もhomeへ
+        // ------------------------------
+
+        router.push(
+          '/home'
+        );
+      } catch (error) {
+        console.error(
+          '通信エラー:',
+          error
+        );
+
+        alert(
+          'エラーが発生しました。'
+        );
+      } finally {
+        setIsSubmitting(
+          false
+        );
+      }
+    };
 
   // ==============================
   // アイテムがまだない場合
@@ -652,11 +829,13 @@ export default function PlaceAnimalPage() {
     <div className="place-container">
 
       {/* タイトル */}
+
       <h1 className="place-title-plain">
         どこにこのアイテムを置くかみんなで決めよう！
       </h1>
 
       {/* アイテム画像 */}
+
       <div className="place-item-section">
         <img
           src={`/images/animals/${currentItem.item_image}`}
@@ -668,57 +847,65 @@ export default function PlaceAnimalPage() {
         />
 
         <span className="place-item-fraction">
-          {currentIndex + 1} / {totalItems}
+          {currentIndex + 1} /{' '}
+          {totalItems}
         </span>
       </div>
 
       {/* エリア */}
+
       <div className="place-areas-row">
-        {ZOO_AREAS.map((area) => {
-          const isSelected =
-            selectedAreaId === area.id;
+        {ZOO_AREAS.map(
+          (area) => {
+            const isSelected =
+              selectedAreaId ===
+              area.id;
 
-          return (
-            <div
-              key={area.id}
-              className="square-area-item"
-            >
+            return (
               <div
-                onClick={() =>
-                  handleSelectArea(
-                    area.id
-                  )
-                }
-                className={`square-area-box ${
-                  isSelected
-                    ? 'selected'
-                    : ''
-                } ${
-                  !isTeacher
-                    ? 'readonly'
-                    : ''
-                }`}
+                key={area.id}
+                className="square-area-item"
               >
-                <img
-                  src={area.image}
-                  alt={area.name}
-                  className="square-area-img"
-                />
-              </div>
+                <div
+                  onClick={() =>
+                    handleSelectArea(
+                      area.id
+                    )
+                  }
+                  className={`square-area-box ${
+                    isSelected
+                      ? 'selected'
+                      : ''
+                  } ${
+                    !isTeacher
+                      ? 'readonly'
+                      : ''
+                  }`}
+                >
+                  <img
+                    src={area.image}
+                    alt={area.name}
+                    className="square-area-img"
+                  />
+                </div>
 
-              <span className="square-area-label">
-                {area.name}
-              </span>
-            </div>
-          );
-        })}
+                <span className="square-area-label">
+                  {area.name}
+                </span>
+              </div>
+            );
+          }
+        )}
       </div>
 
       {/* OKボタン */}
+
       <div className="place-footer-center">
         {isTeacher ? (
           <Button
-            onClick={handleConfirm}
+            onClick={
+              handleConfirm
+            }
             disabled={
               !selectedAreaId ||
               isSubmitting ||
