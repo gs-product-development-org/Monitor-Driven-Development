@@ -4,10 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useSync } from '@/components/realtime/SyncContainer'; // ★ SyncContextをインポート
 import './answer.css';
 
-const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
 const LAST_POST_ACTION_KEY = 'last_post_action';
 
 const GENRE_ID_TO_NAME: Record<number, string> = {
@@ -16,14 +15,6 @@ const GENRE_ID_TO_NAME: Record<number, string> = {
   3: '好きなもの',
   4: '雑談',
   5: 'ユニーク',
-};
-
-const GENRE_NAME_TO_ID: Record<string, number> = {
-  学校: 1,
-  日常: 2,
-  好きなもの: 3,
-  雑談: 4,
-  ユニーク: 5,
 };
 
 type StockTopic = {
@@ -41,9 +32,30 @@ type TopicInfo = {
   topic_content: string;
 };
 
+// ★ NGワード判定関数
+const checkNgWord = async (text: string): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from('ng_words')
+    .select('word');
+
+  if (error) {
+    console.error('NGワード取得エラー:', error);
+    throw error;
+  }
+
+  // 入力テキストの中に ng_words の単語が含まれているか判定
+  const matchedWord = data?.find((item) =>
+    text.includes(item.word)
+  );
+
+  return matchedWord?.word ?? null;
+};
+
 export default function TopicStockPage() {
   const router = useRouter();
-  const { user } = useRequireAuth();
+
+  // ★ SyncContextから共通化したユーザー情報やクラス情報を取得
+  const { userId, classId, sessionId, isLoading: isSyncLoading } = useSync();
 
   const [step, setStep] = useState<'input' | 'action'>('input');
 
@@ -60,116 +72,73 @@ export default function TopicStockPage() {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isCheckingNg, setIsCheckingNg] = useState<boolean>(false); // NGチェック中のローディング状態
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [pendingAction, setPendingAction] = useState<ActionType | null>(null);
 
   const chatAreaRef = useRef<HTMLDivElement | null>(null);
   const [canScroll, setCanScroll] = useState<boolean>(false);
 
-  // ★ 最新のお題を DB (RPC: get_topic) から強制取得する共通関数
-  const fetchLatestTopic = async () => {
+  // class_sessions 経由でクラスの最新お題を取得する関数
+  const fetchCurrentTopicFromSession = async () => {
+    if (!classId) return;
+
     try {
-      let classId: number | null = (user as any)?.class_id ? Number((user as any).class_id) : null;
-      if (!classId) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        classId = Number(sessionData?.session?.user?.user_metadata?.class_id);
-      }
-
-      if (!classId) {
-        console.error('クラスIDを取得できませんでした');
-        return;
-      }
-
-      // RPC呼び出し
-      const { data, error } = await supabase.rpc('get_topic', {
-        p_class_id: classId,
-      });
+      const { data, error } = await supabase
+        .from('class_sessions')
+        .select(`
+          class_id,
+          topic_id,
+          genre_id,
+          phase,
+          topics (
+            topic_id,
+            topic_content,
+            genre_id
+          )
+        `)
+        .eq('class_id', classId)
+        .maybeSingle();
 
       if (error) {
-        console.error('get_topic の呼び出しに失敗:', error);
+        console.error('class_sessions の取得に失敗:', error.message);
         return;
       }
 
-      const latestTopic = Array.isArray(data) && data.length > 0 ? data[0] : null;
-
-      if (latestTopic) {
-        const resolvedGenreId = latestTopic.genre_id
-          ? Number(latestTopic.genre_id)
-          : latestTopic.genre_name
-          ? GENRE_NAME_TO_ID[latestTopic.genre_name] || 1
+      if (data && data.topics) {
+        const topicRecord = Array.isArray(data.topics) ? data.topics[0] : data.topics;
+        
+        const resolvedGenreId = data.genre_id
+          ? Number(data.genre_id)
+          : topicRecord?.genre_id
+          ? Number(topicRecord.genre_id)
           : 1;
 
-        const resolvedGenreName =
-          latestTopic.genre_name ||
-          GENRE_ID_TO_NAME[resolvedGenreId] ||
-          'お題';
+        const resolvedGenreName = GENRE_ID_TO_NAME[resolvedGenreId] || 'お題';
 
         const topicData: TopicInfo = {
-          topic_id: Number(latestTopic.topic_id),
-          class_id: Number(latestTopic.class_id),
+          topic_id: Number(data.topic_id),
+          class_id: Number(data.class_id),
           genre_id: resolvedGenreId,
           genre_name: resolvedGenreName,
-          topic_content: latestTopic.topic_content,
+          topic_content: topicRecord?.topic_content || '',
         };
 
-        // 最新データで State と sessionStorage を同時に上書き
         setCurrentTopicInfo(topicData);
-        sessionStorage.setItem(CURRENT_WORK_TOPIC_KEY, JSON.stringify(topicData));
       } else {
-        console.warn('該当するクラスのお題が見つかりませんでした');
+        console.warn('該当するクラスのセッションまたはお題が見つかりませんでした');
       }
     } catch (err) {
       console.error('お題取得中に例外エラーが発生:', err);
     }
   };
 
-  // 初期化 & リアルタイム監視設定
+  // SyncContext の classId や sessionId が確定したらお題を取得・更新
   useEffect(() => {
-    // 1. まずは初期表示のチラつきを防ぐため sessionStorage から一時復元
-    const stored = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.topic_id && parsed.topic_content) {
-          const restoredGenreId = parsed.genre_id
-            ? Number(parsed.genre_id)
-            : parsed.genre_name
-            ? GENRE_NAME_TO_ID[parsed.genre_name] || 1
-            : 1;
-
-          setCurrentTopicInfo({
-            topic_id: parsed.topic_id ? Number(parsed.topic_id) : null,
-            class_id: parsed.class_id ? Number(parsed.class_id) : null,
-            genre_id: restoredGenreId,
-            genre_name: parsed.genre_name || 'お題',
-            topic_content: parsed.topic_content || '',
-          });
-        }
-      } catch (e) {
-        console.error('sessionStorage の読み込みエラー:', e);
-      }
+    if (classId) {
+      fetchCurrentTopicFromSession();
     }
-
-    // 2. sessionStorage に値があろうとなかろうと、必ず DB から最新お題を取得する
-    fetchLatestTopic();
-
-    // 3. Supabase Realtime: 教員側でお題が追加・更新されたら自動で再取得
-    const channel = supabase
-      .channel('topic_changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'topics' }, // ※実際のテーブル名に合わせて調整してください
-        () => {
-          console.log('お題の更新を検知しました。最新のお題を取得します...');
-          fetchLatestTopic();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
+  }, [classId, sessionId]);
 
   const checkScrollable = () => {
     const el = chatAreaRef.current;
@@ -185,18 +154,48 @@ export default function TopicStockPage() {
     return () => window.removeEventListener('resize', checkScrollable);
   }, [stockList, step]);
 
-  const handleAddStock = () => {
+  // ★ NGワード判定機能付きの書き溜め追加関数
+  const handleAddStock = async () => {
     const trimmed = inputText.trim();
+
     if (!trimmed) {
       alert('回答を入力してください');
       return;
     }
 
-    const newId = Date.now().toString();
-    const newStock: StockTopic = { id: newId, text: trimmed };
+    if (isCheckingNg) return;
+    setIsCheckingNg(true);
 
-    setStockList((prevList) => [...prevList, newStock]);
-    setInputText('');
+    try {
+      // 1. NGワードチェック実行
+      const matchedWord = await checkNgWord(trimmed);
+
+      if (matchedWord) {
+        alert(`「${matchedWord}」は使用できない言葉です。`);
+        setIsCheckingNg(false);
+        return;
+      }
+
+      // 2. NGワードがなければ書き溜める
+      const newId = Date.now().toString();
+
+      const newStock: StockTopic = {
+        id: newId,
+        text: trimmed,
+      };
+
+      setStockList((prevList) => [
+        ...prevList,
+        newStock,
+      ]);
+
+      setInputText('');
+    } catch (error) {
+      console.error('回答のチェックに失敗しました:', error);
+      alert('回答のチェックに失敗しました。もう一度お試しください。');
+    } finally {
+      setIsCheckingNg(false);
+    }
   };
 
   const handleFirstConfirm = () => {
@@ -217,27 +216,14 @@ export default function TopicStockPage() {
     const selectedTopic = stockList.find((item) => item.id === selectedTopicId);
     if (!selectedTopic || !pendingAction || isSubmitting) return;
 
+    if (!userId || !classId) {
+      alert('ユーザー情報またはクラス情報が取得できていません。ログイン状態を確認してください。');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      let userId: number | null = (user as any)?.user_id ? Number((user as any).user_id) : null;
-      let classId: number | null = currentTopicInfo.class_id ?? ((user as any)?.class_id ? Number((user as any).class_id) : null);
-
-      if (!userId || !classId) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const sessionUser = sessionData?.session?.user;
-        if (sessionUser) {
-          if (!userId) userId = Number(sessionUser.user_metadata?.user_id || sessionUser.id);
-          if (!classId) classId = Number(sessionUser.user_metadata?.class_id);
-        }
-      }
-
-      if (!userId || !classId) {
-        alert('ユーザー情報またはクラス情報が取得できませんでした。再ログインしてください。');
-        setIsSubmitting(false);
-        return;
-      }
-
       const isPosted = pendingAction === 'announce';
 
       const { data, error } = await supabase.rpc('create_post', {
@@ -257,8 +243,6 @@ export default function TopicStockPage() {
 
       console.log('投稿完了:', data);
 
-      sessionStorage.setItem(LAST_POST_ACTION_KEY, pendingAction);
-
       setPendingAction(null);
 
       router.push('/wait');
@@ -276,9 +260,13 @@ export default function TopicStockPage() {
       {/* 上部: お題テキスト / ジャンル名表示 */}
       <div className="stock-main-topic">
         <h1 className="stock-topic-title">
-          {currentTopicInfo.topic_content
-            ? `【${currentTopicInfo.genre_name}】${currentTopicInfo.topic_content}`
-            : currentTopicInfo.genre_name}
+          {isSyncLoading ? (
+            '読み込み中...'
+          ) : currentTopicInfo.topic_content ? (
+            `【${currentTopicInfo.genre_name}】${currentTopicInfo.topic_content}`
+          ) : (
+            currentTopicInfo.genre_name
+          )}
         </h1>
       </div>
 
@@ -333,6 +321,7 @@ export default function TopicStockPage() {
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="回答を入力して書き溜める..."
                 className="stock-input-box"
+                disabled={isCheckingNg}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAddStock();
                 }}
@@ -340,6 +329,7 @@ export default function TopicStockPage() {
               <button
                 type="button"
                 onClick={handleAddStock}
+                disabled={isCheckingNg}
                 className="stock-icon-submit-button"
                 aria-label="書き溜める"
               >
@@ -360,7 +350,7 @@ export default function TopicStockPage() {
 
             <Button
               onClick={handleFirstConfirm}
-              disabled={!selectedTopicId}
+              disabled={!selectedTopicId || isCheckingNg}
               className="stock-confirm-button"
             >
               確定

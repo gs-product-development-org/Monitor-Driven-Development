@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useSync } from '@/components/realtime/SyncContainer';
 import './title.css';
 
 type TitleData = {
@@ -23,68 +23,61 @@ const DEFAULT_TITLE: TitleData = {
 
 export default function TitleDetailPage() {
   const router = useRouter();
-  const { user } = useRequireAuth();
+
+  // 1. SyncContext から共通の classId, userId, isLoading を取得
+  const { classId, userId, isLoading: isSyncLoading } = useSync();
 
   const [titleData, setTitleData] = useState<TitleData>(DEFAULT_TITLE);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
+  // 2. 称号取得ロジック
+  const fetchTitle = useCallback(async (cId: number, uId: number) => {
+    setLoading(true);
 
-    const fetchTitle = async () => {
-      setLoading(true);
-      setError(null);
+    try {
+      const { data, error: rpcError } = await supabase.rpc('get_title', {
+        p_class_id: cId,
+        p_user_number: uId, // RPCの定義に合わせて userId (または userNumber) を渡す
+      });
 
-      try {
-        const classId = Number((user as any)?.class_id);
-        const userNumber = Number((user as any)?.user_number || (user as any)?.student_id || (user as any)?.user_id);
-
-        // if (isNaN(classId) || isNaN(userNumber)) {
-        //   throw new Error('称号はまだないよ');
-        // }
-
-        if (isNaN(classId) || isNaN(userNumber)) {
-          setTitleData(DEFAULT_TITLE);
-          return;
-        }
-
-        const { data, error: rpcError } = await supabase.rpc('get_title', {
-          p_class_id: classId,
-          p_user_number: userNumber,
-        });
-
-        if (rpcError || !data || data.length === 0) {
-          // データがない・エラー時はデフォルト（はてな画像）を表示
-          setTitleData(DEFAULT_TITLE);
-        } else {
-          const result = data[0];
-          setTitleData({
-            title_id: Number(result.title_id),
-            title_name: result.title_name || '称号なし',
-            title_detail: result.title_detail || '',
-            image: `/images/animals/title-${result.title_id}.png`,
-          });
-        }
-      } catch (err) {
-        // 例外発生時もデフォルトを表示
+      if (rpcError || !data || data.length === 0) {
+        // データがない・エラー時はデフォルトを表示
         setTitleData(DEFAULT_TITLE);
-      } finally {
+      } else {
+        const result = data[0];
+        setTitleData({
+          title_id: Number(result.title_id),
+          title_name: result.title_name || '称号なし',
+          title_detail: result.title_detail || '',
+          image: `/images/animals/title-${result.title_id}.png`,
+        });
+      }
+    } catch (err) {
+      console.error('称号取得エラー:', err);
+      setTitleData(DEFAULT_TITLE);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 3. classId と userId が確定したタイミングで称号を取得
+  useEffect(() => {
+    if (!isSyncLoading) {
+      if (classId && userId) {
+        fetchTitle(classId, userId);
+      } else {
         setLoading(false);
       }
-    };
+    }
+  }, [classId, userId, isSyncLoading, fetchTitle]);
 
-    fetchTitle();
-  }, [user]);
-
-  if (loading) {
+  if (isSyncLoading || loading) {
     return (
       <div className="title-detail-container">
         <p className="loading-text">称号を計算中...</p>
       </div>
     );
   }
-
 
   return (
     <div className="title-detail-container">

@@ -1,17 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useSync } from '@/components/realtime/SyncContainer';
 import { usePostDistribution } from '@/hooks/usePostDistribution'; // フックのパスは環境に合わせて調整してください
 
 // types フォルダから型とマッピング定数をインポート
 import { Genre, GENRE_ID_MAP, REACTION_SETS, ReactionOption } from '@/types/reaction';
 
 import './anonymous-reveal.css';
-
-// sessionStorage 保存用キー名定数
-const CURRENT_WORK_TOPIC_KEY = 'current_work_topic';
 
 interface AnonymousRevealPageProps {
   genre?: Genre;
@@ -21,72 +19,112 @@ interface AnonymousRevealPageProps {
 }
 
 export default function AnonymousRevealPage({
-  genre,
-  topicText = '今日の授業で一番なるほどと思ったことは？',
+  genre: propsGenre,
+  topicText: propsTopicText,
   classId: propsClassId,
   currentUserId: propsUserId,
 }: AnonymousRevealPageProps) {
   const router = useRouter();
 
-  // ------------------------------------------------------------
-  // 1. クラスID・ユーザーID・お題情報の取得（PropsまたはsessionStorageより）
-  // ------------------------------------------------------------
-  const [classId, setClassId] = useState<number | null>(propsClassId ?? null);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(propsUserId ?? null);
+  // 1. SyncContainer から同期データを取得
+  const {
+    classId: syncClassId,
+    userId: syncUserId,
+    sessionId: syncSessionId,
+    isLoading: isSyncLoading,
+  } = useSync();
+
+  // Propsの指定があれば優先、無ければ SyncContainer の値を使用
+  const classId = propsClassId ?? syncClassId;
+  const currentUserId = propsUserId ?? syncUserId;
+
+  // DBから取得するお題関連のステート
   const [topicId, setTopicId] = useState<number | null>(null);
-  const [activeTopicText, setActiveTopicText] = useState<string>(topicText);
-  const [activeGenre, setActiveGenre] = useState<Genre>(genre || '学校');
+  const [activeTopicText, setActiveTopicText] = useState<string>(
+    propsTopicText || 'お題を読み込んでいます...'
+  );
+  const [activeGenre, setActiveGenre] = useState<Genre>(propsGenre || '学校');
+  const [genreId, setGenreId] = useState<number>(1);
+  const [isTopicLoading, setIsTopicLoading] = useState<boolean>(true);
+
+  // ------------------------------------------------------------
+  // 2. class_sessions からアクティブなお題・ジャンル情報を取得
+  // ------------------------------------------------------------
+  const fetchTopicAndGenre = useCallback(async () => {
+    if (!classId && !syncSessionId) return;
+
+    setIsTopicLoading(true);
+    try {
+      // sessionId または classId で active / 进行中 の class_sessions を検索
+      let query = supabase
+        .from('class_sessions')
+        .select(`
+          topic_id,
+          topics (
+            topic_id,
+            topic_content,
+            genre_id,
+            genres (
+              genre_id,
+              genre_name
+            )
+          )
+        `);
+
+      if (syncSessionId) {
+        query = query.eq('session_id', syncSessionId);
+      } else if (classId) {
+        query = query.eq('class_id', classId);
+      }
+
+      const { data: sessionData, error: sessionError } = await query
+        .limit(1)
+        .maybeSingle();
+
+      if (sessionError) {
+        console.error('class_sessions の取得エラー:', sessionError.message);
+      } else if (sessionData && sessionData.topics) {
+        const topic = sessionData.topics as any;
+        const fetchedTopicId = Number(topic.topic_id || sessionData.topic_id);
+        const fetchedGenreId = Number(topic.genre_id || topic.genres?.id || 1);
+
+        setTopicId(fetchedTopicId);
+        setGenreId(fetchedGenreId);
+
+        if (topic.topic_content) {
+          setActiveTopicText(topic.topic_content);
+        }
+
+        // ジャンル名の特定（Propsが指定されていない場合）
+        if (!propsGenre) {
+          if (GENRE_ID_MAP[fetchedGenreId]) {
+            setActiveGenre(GENRE_ID_MAP[fetchedGenreId]);
+          } else if (topic.genres?.genre_name && REACTION_SETS[topic.genres.genre_name as Genre]) {
+            setActiveGenre(topic.genres.genre_name as Genre);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('お題・ジャンル情報の取得に失敗しました:', e);
+    } finally {
+      setIsTopicLoading(false);
+    }
+  }, [classId, syncSessionId, propsGenre]);
 
   useEffect(() => {
-    // 1. current_work_topic からお題情報とクラスIDを取得
-    const topicStorage = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
-    if (topicStorage) {
-      try {
-        const parsedTopic = JSON.parse(topicStorage);
-
-        if (parsedTopic?.topic_content) setActiveTopicText(parsedTopic.topic_content);
-        if (!propsClassId && parsedTopic?.class_id) setClassId(Number(parsedTopic.class_id));
-        if (parsedTopic?.topic_id) setTopicId(Number(parsedTopic.topic_id));
-
-        // ジャンルの特定
-        if (!genre) {
-          const rawGenreId = Number(parsedTopic?.genre_id);
-          if (!isNaN(rawGenreId) && GENRE_ID_MAP[rawGenreId]) {
-            setActiveGenre(GENRE_ID_MAP[rawGenreId]);
-          } else if (parsedTopic?.genre_name && REACTION_SETS[parsedTopic.genre_name as Genre]) {
-            setActiveGenre(parsedTopic.genre_name as Genre);
-          }
-        }
-      } catch (e) {
-        console.error('sessionStorage (current_work_topic) のパースに失敗しました:', e);
-      }
+    if (!isSyncLoading) {
+      fetchTopicAndGenre();
     }
-
-    // 2. user_info からログイン中のユーザーIDを取得
-    if (!propsUserId) {
-      const userInfoStorage = sessionStorage.getItem('user_info');
-      if (userInfoStorage) {
-        try {
-          const parsedUser = JSON.parse(userInfoStorage);
-          // user_info 内のIDのキー名に合わせて調整してください（例: user_id や id など）
-          const fetchedUserId = parsedUser?.user_id ?? parsedUser?.id;
-          if (fetchedUserId) {
-            setCurrentUserId(Number(fetchedUserId));
-          }
-        } catch (e) {
-          console.error('sessionStorage (user_info) のパースに失敗しました:', e);
-        }
-      }
-    }
-  }, [genre, propsClassId, propsUserId]);
+  }, [isSyncLoading, fetchTopicAndGenre]);
 
   // ------------------------------------------------------------
-  // 2. 配布フックから投稿データの取得
+  // 3. 配布フックから投稿データの取得
   // ------------------------------------------------------------
-  const { assignedPosts, loading, error } = usePostDistribution(classId, currentUserId, topicId);
-
-  // ▼ ここにログを追加して、ブラウザのコンソールを確認してください
-  console.log('現在の値:', { classId, currentUserId, assignedPostsCount: assignedPosts.length, loading, error });
+  const { assignedPosts, loading: isPostsLoading, error } = usePostDistribution(
+    classId,
+    currentUserId,
+    topicId
+  );
 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -94,12 +132,15 @@ export default function AnonymousRevealPage({
   const totalAnswers = assignedPosts.length;
   const currentPost = assignedPosts[currentIndex];
 
-  // リアクションボタン一覧の取得
+  // ジャンルに合ったリアクションボタン一覧の取得
   const currentReactions: ReactionOption[] =
     REACTION_SETS[activeGenre] || REACTION_SETS['学校'];
 
+  // 全体のローディング状態
+  const isLoading = isSyncLoading || isTopicLoading || isPostsLoading;
+
   // ------------------------------------------------------------
-  // 3. リアクション選択時の処理（DB保存 ＆ 次の投稿へ遷移）
+  // 4. リアクション選択時の処理（DB保存 ＆ 次の投稿へ遷移）
   // ------------------------------------------------------------
   const handleSelectReaction = async (reactionId: string | number, index: number) => {
     if (!currentPost || !currentUserId || isSubmitting) return;
@@ -107,20 +148,15 @@ export default function AnonymousRevealPage({
     setIsSubmitting(true);
 
     try {
-      // 1〜4 の数値(stamp_type)を確実に決定する
+      // 1〜4 の数値 (stamp_type) を計算
       let stampTypeNumber = 1;
-
-      // パターンA: 渡された reactionId が数値または数値形式の文字列の場合
       const parsedId = Number(reactionId);
+
       if (!isNaN(parsedId) && parsedId >= 1 && parsedId <= 4) {
         stampTypeNumber = parsedId;
-      } 
-      // パターンB: 配列のインデックス (0〜3) から 1〜4 に変換する場合
-      else if (typeof index === 'number' && index >= 0 && index <= 3) {
+      } else if (typeof index === 'number' && index >= 0 && index <= 3) {
         stampTypeNumber = index + 1;
-      }
-      // パターンC: 文字列IDに対するフォールバックマッピング
-      else {
+      } else {
         const reactionMap: Record<string, number> = {
           '1': 1, '2': 2, '3': 3, '4': 4,
           'reaction_1': 1, 'reaction_2': 2, 'reaction_3': 3, 'reaction_4': 4,
@@ -131,33 +167,19 @@ export default function AnonymousRevealPage({
       }
 
       console.log('【デバッグ】選択されたリアクション:', {
-        rawReactionId: reactionId,
-        typeOfRaw: typeof reactionId,
-        assignedStampType: stampTypeNumber
+        postId: currentPost.post_id,
+        genreId,
+        stampType: stampTypeNumber,
+        userId: currentUserId,
       });
 
-      // 1. セッションストレージから直接 genre_id を取得
-      let genreId = 1;
-      const topicStorage = sessionStorage.getItem(CURRENT_WORK_TOPIC_KEY);
-
-      if (topicStorage) {
-        try {
-          const parsedTopic = JSON.parse(topicStorage);
-          if (parsedTopic?.genre_id) {
-            genreId = Number(parsedTopic.genre_id);
-          }
-        } catch (e) {
-          console.error('genre_id の抽出に失敗しました:', e);
-        }
-      }
-
-      // 2. RPC関数 'add_reactions_bulk' を実行
+      // RPC 'add_reactions_bulk' を実行
       const { data, error: rpcError } = await supabase.rpc('add_reactions_bulk', {
         p_reactions: [
           {
             post_id: currentPost.post_id,
             genre_id: genreId,
-            stamp_type: stampTypeNumber, // 必ず 1, 2, 3, 4 のいずれかの数値が入る
+            stamp_type: stampTypeNumber,
           },
         ],
         p_user_id: currentUserId,
@@ -184,16 +206,16 @@ export default function AnonymousRevealPage({
   };
 
   // ローディング画面
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="reveal-container">
-        <p style={{ textAlign: 'center', marginTop: '40vh' }}>投稿を読み込んでいます...</p>
+        <p style={{ textAlign: 'center', marginTop: '40vh' }}>情報を読み込んでいます...</p>
       </div>
     );
   }
 
   // エラー時・投稿が1件もない場合
-  if (error || (assignedPosts.length === 0 && !loading)) {
+  if (error || (assignedPosts.length === 0 && !isLoading)) {
     return (
       <div className="reveal-container">
         <p style={{ textAlign: 'center', marginTop: '40vh' }}>

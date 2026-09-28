@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   LineChart,
@@ -14,6 +14,7 @@ import {
 import type { ValueType } from 'recharts/types/component/DefaultTooltipContent';
 import { supabase } from '@/lib/supabase';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useSync } from '@/components/realtime/SyncContainer';
 import './summary.css';
 
 // グラフ表示用のデータ型（rate を number | null に拡張）
@@ -36,117 +37,122 @@ export default function RaisingHandsRatePage() {
   const router = useRouter();
   const { user } = useRequireAuth();
 
+  // SyncContainer から classId とローディング状態を取得
+  const { classId: syncClassId, isLoading: isSyncLoading } = useSync();
+
   const [classInfo, setClassInfo] = useState({
     gradeClass: 'クラス',
-    schoolYear: '2026年度',
+    schoolYear: `${new Date().getFullYear()}年度`,
   });
 
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchRates = async () => {
-      setLoading(true);
-      setError(null);
+  // 公開率データの取得関数
+  const fetchRates = useCallback(async (targetClassId: number) => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        let classId: number | null = null;
-        let className = 'クラス';
+    try {
+      // クラス名の特定（userオブジェクト、またはDBから取得）
+      let className = 'クラス';
+      if (user && (user as any)?.class_name) {
+        className = (user as any).class_name;
+      } else {
+        // userになければDBのclassesテーブルからクラス名を取得
+        const { data: classData } = await supabase
+          .from('classes')
+          .select('class_name')
+          .eq('class_id', targetClassId)
+          .maybeSingle();
 
-        if (user) {
-          classId = Number((user as any)?.class_id);
-          if ((user as any)?.class_name) className = (user as any).class_name;
+        if (classData?.class_name) {
+          className = classData.class_name;
         }
-
-        if (!classId || isNaN(classId)) {
-          const { data: sessionData } = await supabase.auth.getSession();
-          const sessionUser = sessionData?.session?.user;
-          if (sessionUser) {
-            classId = Number(sessionUser.user_metadata?.class_id);
-            if (sessionUser.user_metadata?.class_name) {
-              className = sessionUser.user_metadata.class_name;
-            }
-          }
-        }
-
-        if (!classId || isNaN(classId)) {
-          throw new Error('所属クラスの情報を取得できませんでした。');
-        }
-
-        setClassInfo({
-          gradeClass: className,
-          schoolYear: `${new Date().getFullYear()}年度`,
-        });
-
-        const { data, error: rpcError } = await supabase.rpc('get_rates', {
-          p_class_id: classId,
-        });
-
-        if (rpcError) {
-          throw new Error(`[Code: ${rpcError.code}] ${rpcError.message}`);
-        }
-
-        // 月別集計バッファ
-        const monthlyStats: Record<number, { sumRate: number; count: number }> = {};
-        MONTH_ORDER.forEach((m) => {
-          monthlyStats[m] = { sumRate: 0, count: 0 };
-        });
-
-        // 追跡用：データが存在した一番最近（最後）の月インデックス
-        let lastActiveMonthIndex = -1;
-
-        if (data && Array.isArray(data)) {
-          (data as RateRecord[]).forEach((item) => {
-            if (!item.created_at) return;
-            const date = new Date(item.created_at);
-            const month = date.getMonth() + 1; // 1~12
-
-            if (monthlyStats[month] !== undefined) {
-              monthlyStats[month].sumRate += Number(item.rate) || 0;
-              monthlyStats[month].count += 1;
-
-              // 該当月が MONTH_ORDER の何番目か特定し、最新インデックスを更新
-              const orderIndex = MONTH_ORDER.indexOf(month);
-              if (orderIndex > lastActiveMonthIndex) {
-                lastActiveMonthIndex = orderIndex;
-              }
-            }
-          });
-        }
-
-        // 4. グラフ表示用配列の作成
-        // 最新データがある月までのデータのみ計算し、それ以降の月は rate を null にする
-        const formattedChartData: MonthlyData[] = MONTH_ORDER.map((m, index) => {
-          const stat = monthlyStats[m];
-          const hasData = stat.count > 0;
-
-          // 一番最近のデータがある月 index よりも後ろの月は rate を null に設定
-          let rate: number | null = null;
-
-          if (index <= lastActiveMonthIndex) {
-            rate = hasData ? Math.round((stat.sumRate / stat.count) * 100) / 100 : 0;
-          }
-
-          return {
-            month: `${m}月`,
-            monthNum: m,
-            rate: rate, // null の場合 Recharts はプロットを描画しません
-            hasData: hasData,
-          };
-        });
-
-        setMonthlyData(formattedChartData);
-      } catch (err: any) {
-        console.error('公開率データの取得エラー:', err);
-        setError(err.message || 'データの取得に失敗しました');
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchRates();
+      setClassInfo({
+        gradeClass: className,
+        schoolYear: `${new Date().getFullYear()}年度`,
+      });
+
+      // RPC: get_rates の呼び出し
+      const { data, error: rpcError } = await supabase.rpc('get_rates', {
+        p_class_id: targetClassId,
+      });
+
+      if (rpcError) {
+        throw new Error(`[Code: ${rpcError.code}] ${rpcError.message}`);
+      }
+
+      // 月別集計バッファ
+      const monthlyStats: Record<number, { sumRate: number; count: number }> = {};
+      MONTH_ORDER.forEach((m) => {
+        monthlyStats[m] = { sumRate: 0, count: 0 };
+      });
+
+      // 追跡用：データが存在した一番最近（最後）の月インデックス
+      let lastActiveMonthIndex = -1;
+
+      if (data && Array.isArray(data)) {
+        (data as RateRecord[]).forEach((item) => {
+          if (!item.created_at) return;
+          const date = new Date(item.created_at);
+          const month = date.getMonth() + 1; // 1~12
+
+          if (monthlyStats[month] !== undefined) {
+            monthlyStats[month].sumRate += Number(item.rate) || 0;
+            monthlyStats[month].count += 1;
+
+            // 該当月が MONTH_ORDER の何番目か特定し、最新インデックスを更新
+            const orderIndex = MONTH_ORDER.indexOf(month);
+            if (orderIndex > lastActiveMonthIndex) {
+              lastActiveMonthIndex = orderIndex;
+            }
+          }
+        });
+      }
+
+      // グラフ表示用配列の作成
+      const formattedChartData: MonthlyData[] = MONTH_ORDER.map((m, index) => {
+        const stat = monthlyStats[m];
+        const hasData = stat.count > 0;
+
+        let rate: number | null = null;
+
+        if (index <= lastActiveMonthIndex) {
+          rate = hasData ? Math.round((stat.sumRate / stat.count) * 100) / 100 : 0;
+        }
+
+        return {
+          month: `${m}月`,
+          monthNum: m,
+          rate: rate,
+          hasData: hasData,
+        };
+      });
+
+      setMonthlyData(formattedChartData);
+    } catch (err: any) {
+      console.error('公開率データの取得エラー:', err);
+      setError(err.message || 'データの取得に失敗しました');
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    // SyncContainer の読み込み完了を待つ
+    if (isSyncLoading) return;
+
+    if (syncClassId) {
+      fetchRates(syncClassId);
+    } else {
+      setLoading(false);
+      setError('所属クラスの情報を取得できませんでした。');
+    }
+  }, [syncClassId, isSyncLoading, fetchRates]);
 
   return (
     <div className="rate-container">
@@ -166,7 +172,7 @@ export default function RaisingHandsRatePage() {
       </div>
 
       <div className="rate-chart-wrapper">
-        {loading ? (
+        {loading || isSyncLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <p>データを読み込み中...</p>
           </div>
@@ -215,7 +221,6 @@ export default function RaisingHandsRatePage() {
                 }}
               />
 
-              {/* connectNulls={false}（デフォルト）により、null の箇所はプロットされず線も引かれません */}
               <Line
                 type="monotone"
                 dataKey="rate"
