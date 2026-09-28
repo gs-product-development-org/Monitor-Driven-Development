@@ -23,7 +23,7 @@ export default function ZooHomePage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // SyncContext から共通情報と各種操作メソッドを取得
-  const { isTeacher, classId, userId, isLoading: isSyncLoading, channel } = useSync();
+  const { isTeacher, classId, userId, isLoading: isSyncLoading, channel, updateSessionPhase } = useSync();
 
   const [showScrollHint, setShowScrollHint] = useState<boolean>(true);
   const [placedAnimals, setPlacedAnimals] = useState<PlacedAnimal[]>([]);
@@ -35,6 +35,7 @@ export default function ZooHomePage() {
   // メーター情報取得ロジック
   const fetchMeter = useCallback(async (cId: number) => {
     try {
+      await updateSessionPhase('HOME');
       const { data, error } = await supabase.rpc('get_meter', {
         p_class_id: cId,
       });

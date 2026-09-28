@@ -10,7 +10,7 @@ type TitleData = {
   title_id: number | null;
   title_name: string;
   title_detail: string;
-  image?: string;
+  image: string;
 };
 
 // 初回・未取得時のデフォルトデータ
@@ -45,11 +45,21 @@ export default function TitleDetailPage() {
         setTitleData(DEFAULT_TITLE);
       } else {
         const result = data[0];
+
+        // title_image_path の先頭に `/images/animals/` を結合
+        let imagePath = DEFAULT_TITLE.image;
+        if (result.title_image_path) {
+          const rawPath = result.title_image_path.startsWith('/')
+            ? result.title_image_path.slice(1)
+            : result.title_image_path;
+          imagePath = `/images/animals/${rawPath}`;
+        }
+
         setTitleData({
           title_id: Number(result.title_id),
           title_name: result.title_name || '称号なし',
           title_detail: result.title_detail || '',
-          image: `/images/animals/title-${result.title_id}.png`,
+          image: imagePath,
         });
       }
     } catch (err) {
