@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, {
+  useState,
+  useEffect,
+} from 'react';
+
 import { Button } from '@/components/ui/Button';
-import { supabase } from '@/lib/supabase';
 import { useSaveZooPlacement } from '@/hooks/useZooPlacement';
 import { useSync } from '@/components/realtime/SyncContainer';
-import { GACHA_RESULT_ITEMS_KEY } from '../gacha/page';
+
 import './placement.css';
 
-// ==============================
+// =============================================================
 // 型定義
-// ==============================
+// =============================================================
 
 type ZooArea = {
   id: string;
@@ -29,36 +31,9 @@ type ItemToPlace = {
   class_id?: number;
 };
 
-type PendingPlacement = {
-  itemId: number;
-  areaId: number;
-  classId: number;
-};
-
-// ==============================
-// Broadcast用イベント型
-// ==============================
-
-type PlacementInitPayload = {
-  items: ItemToPlace[];
-};
-
-type PlacementSelectPayload = {
-  currentIndex: number;
-  selectedAreaId: string | null;
-};
-
-type PlacementNextPayload = {
-  currentIndex: number;
-};
-
-type PlacementCompletePayload = {
-  completed: true;
-};
-
-// ==============================
+// =============================================================
 // エリア定義
-// ==============================
+// =============================================================
 
 const ZOO_AREAS: ZooArea[] = [
   {
@@ -93,39 +68,31 @@ const ZOO_AREAS: ZooArea[] = [
   },
 ];
 
-// ==============================
-// フォールバック
-// ==============================
-
-const FALLBACK_ITEMS: ItemToPlace[] = [
-  {
-    item_id: 1,
-    item_name: 'ライオン',
-    item_image: 'lion.png',
-  },
-  {
-    item_id: 2,
-    item_name: 'ペンギン',
-    item_image: 'penguin.png',
-  },
-  {
-    item_id: 3,
-    item_name: 'ゾウ',
-    item_image: 'elephant.png',
-  },
-];
-
-// ==============================
+// =============================================================
 // メインコンポーネント
-// ==============================
+// =============================================================
 
 export default function PlaceAnimalPage() {
-  const router = useRouter();
-
   const {
     classId,
     isTeacher,
     isLoading: isSyncLoading,
+
+    channelReady,
+
+    placementItems,
+
+    placementCurrentIndex,
+
+    placementSelectedAreaId,
+
+    requestPlacementItems,
+
+    selectPlacementArea,
+
+    nextPlacement,
+
+    completePlacement,
   } = useSync();
 
   const {
@@ -133,482 +100,135 @@ export default function PlaceAnimalPage() {
     loading: isSaving,
   } = useSaveZooPlacement();
 
-  // ==============================
+  // ===========================================================
   // State
-  // ==============================
+  // ===========================================================
 
-  const [itemsToPlace, setItemsToPlace] =
-    useState<ItemToPlace[]>([]);
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState<boolean>(false);
 
-  const [currentIndex, setCurrentIndex] =
-    useState<number>(0);
-
-  const [selectedAreaId, setSelectedAreaId] =
-    useState<string | null>(null);
-
-  const [isSubmitting, setIsSubmitting] =
-    useState<boolean>(false);
-
-  // ==============================
-  // Broadcast channel
-  // ==============================
-
-  const channelRef =
-    useRef<ReturnType<typeof supabase.channel> | null>(
-      null
-    );
-
-  // ==============================
-  // 初期化済み判定
-  // ==============================
-
-  const initializedRef =
-    useRef(false);
-
-  // ==============================
-  // classId取得
-  // ==============================
-
-  const resolvedClassId = (): number | null => {
-    // ------------------------------
-    // まずuseSync()のclassIdを使用
-    // ------------------------------
-
-    if (classId) {
-      const parsed = Number(classId);
-
-      if (
-        !Number.isNaN(parsed) &&
-        parsed > 0
-      ) {
-        return parsed;
-      }
-    }
-
-    // ------------------------------
-    // fallbackとしてsessionStorage
-    // ------------------------------
-
-    try {
-      const raw =
-        sessionStorage.getItem(
-          'user_info'
-        );
-
-      if (!raw) {
-        return null;
-      }
-
-      const userInfo =
-        JSON.parse(raw);
-
-      const parsed =
-        Number(userInfo.class_id);
-
-      if (
-        !Number.isNaN(parsed) &&
-        parsed > 0
-      ) {
-        return parsed;
-      }
-    } catch (error) {
-      console.error(
-        'user_infoの読み込みに失敗:',
-        error
-      );
-    }
-
-    return null;
-  };
-
-  // ==============================
-  // Broadcast送信
-  // ==============================
-
-  const broadcastEvent = async (
-    event: string,
-    payload: unknown
-  ) => {
-    const channel =
-      channelRef.current;
-
-    if (!channel) {
-      console.warn(
-        'Broadcast channelが存在しません'
-      );
-      return;
-    }
-
-    try {
-      await channel.send({
-        type: 'broadcast',
-        event,
-        payload,
-      });
-    } catch (error) {
-      console.error(
-        `Broadcast送信エラー: ${event}`,
-        error
-      );
-    }
-  };
-
-  // ==============================
-  // Broadcast購読
-  // ==============================
+  // ===========================================================
+  // 生徒：ガチャ結果を先生に要求
+  // ===========================================================
 
   useEffect(() => {
     if (isSyncLoading) {
       return;
     }
 
-    const resolvedId =
-      resolvedClassId();
+    // ---------------------------------------------------------
+    // 先生は要求しない
+    // ---------------------------------------------------------
 
-    if (!resolvedId) {
-      console.error(
-        'classIdを取得できません'
-      );
+    if (isTeacher) {
       return;
     }
 
-    const channelName =
-      `classroom_placement_${resolvedId}`;
+    // ---------------------------------------------------------
+    // Realtime接続前なら何もしない
+    // ---------------------------------------------------------
+
+    if (!channelReady) {
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // すでに取得済みなら要求しない
+    // ---------------------------------------------------------
+
+    if (
+      placementItems.length > 0
+    ) {
+      return;
+    }
 
     console.log(
-      'placement Broadcast channel作成:',
-      channelName
+      '生徒：ガチャ結果を先生に要求します'
     );
 
-    const channel =
-      supabase.channel(channelName);
-
-    channelRef.current = channel;
-
-    // ------------------------------
-    // 配置セッション初期化
-    // ------------------------------
-
-    channel.on(
-      'broadcast',
-      {
-        event: 'PLACEMENT_INIT',
-      },
-      ({ payload }) => {
-        console.log(
-          'PLACEMENT_INIT受信:',
-          payload
-        );
-
-        const data =
-          payload as PlacementInitPayload;
-
-        if (
-          !data.items ||
-          !Array.isArray(data.items) ||
-          data.items.length === 0
-        ) {
-          return;
-        }
-
-        setItemsToPlace(
-          data.items
-        );
-
-        setCurrentIndex(0);
-
-        setSelectedAreaId(
-          null
-        );
-      }
-    );
-
-    // ------------------------------
-    // エリア選択同期
-    // ------------------------------
-
-    channel.on(
-      'broadcast',
-      {
-        event: 'PLACEMENT_SELECT',
-      },
-      ({ payload }) => {
-        console.log(
-          'PLACEMENT_SELECT受信:',
-          payload
-        );
-
-        const data =
-          payload as PlacementSelectPayload;
-
-        setCurrentIndex(
-          data.currentIndex
-        );
-
-        setSelectedAreaId(
-          data.selectedAreaId
-        );
-      }
-    );
-
-    // ------------------------------
-    // 次の動物へ
-    // ------------------------------
-
-    channel.on(
-      'broadcast',
-      {
-        event: 'PLACEMENT_NEXT',
-      },
-      ({ payload }) => {
-        console.log(
-          'PLACEMENT_NEXT受信:',
-          payload
-        );
-
-        const data =
-          payload as PlacementNextPayload;
-
-        setCurrentIndex(
-          data.currentIndex
-        );
-
-        setSelectedAreaId(
-          null
-        );
-      }
-    );
-
-    // ------------------------------
-    // 全配置完了
-    // ------------------------------
-
-    channel.on(
-      'broadcast',
-      {
-        event: 'PLACEMENT_COMPLETE',
-      },
-      ({ payload }) => {
-        console.log(
-          'PLACEMENT_COMPLETE受信:',
-          payload
-        );
-
-        const data =
-          payload as PlacementCompletePayload;
-
-        if (!data.completed) {
-          return;
-        }
-
-        sessionStorage.removeItem(
-          GACHA_RESULT_ITEMS_KEY
-        );
-
-        router.push('/home');
-      }
-    );
-
-    // ------------------------------
-    // Subscribe
-    // ------------------------------
-
-    channel.subscribe((status) => {
-      console.log(
-        'placement Broadcast status:',
-        status
-      );
-    });
-
-    // ------------------------------
-    // Cleanup
-    // ------------------------------
-
-    return () => {
-      console.log(
-        'placement Broadcast channel解除'
-      );
-
-      channelRef.current =
-        null;
-
-      supabase.removeChannel(
-        channel
-      );
-    };
-  }, [
-    isSyncLoading,
-    classId,
-    router,
-  ]);
-
-  // ==============================
-  // ガチャ結果読み込み
-  // ==============================
-
-  useEffect(() => {
-    if (isSyncLoading) {
-      return;
-    }
-
-    if (
-      initializedRef.current
-    ) {
-      return;
-    }
-
-    const loadItems = () => {
-      const savedData =
-        sessionStorage.getItem(
-          GACHA_RESULT_ITEMS_KEY
-        );
-
-      // ------------------------------
-      // sessionStorageにガチャ結果がある場合
-      // ------------------------------
-
-      if (savedData) {
-        try {
-          const parsedItems:
-            ItemToPlace[] =
-            JSON.parse(savedData);
-
-          if (
-            Array.isArray(
-              parsedItems
-            ) &&
-            parsedItems.length > 0
-          ) {
-            console.log(
-              'ガチャ結果を読み込み:',
-              parsedItems
-            );
-
-            setItemsToPlace(
-              parsedItems
-            );
-
-            initializedRef.current =
-              true;
-
-            return parsedItems;
-          }
-        } catch (error) {
-          console.error(
-            'セッションデータの読み込みエラー:',
-            error
-          );
-        }
-      }
-
-      // ------------------------------
-      // セッションにない場合
-      // フォールバックを使用
-      // ------------------------------
-
-      console.warn(
-        'ガチャ結果が存在しないため、フォールバックデータを使用します'
-      );
-
-      setItemsToPlace(
-        FALLBACK_ITEMS
-      );
-
-      initializedRef.current =
-        true;
-
-      return FALLBACK_ITEMS;
-    };
-
-    const items =
-      loadItems();
-
-    // ==============================
-    // 先生だけ初期データをBroadcast
-    // ==============================
-
-    if (
-      isTeacher &&
-      items.length > 0
-    ) {
-      const timer =
-        setTimeout(() => {
-          broadcastEvent(
-            'PLACEMENT_INIT',
-            {
-              items,
-            }
-          );
-        }, 500);
-
-      return () => {
-        clearTimeout(timer);
-      };
-    }
+    requestPlacementItems();
   }, [
     isSyncLoading,
     isTeacher,
+    channelReady,
+    placementItems.length,
+    requestPlacementItems,
   ]);
 
-  // ==============================
+  // ===========================================================
+  // class_id
+  // ===========================================================
+
+  const resolvedClassId =
+    classId
+      ? Number(classId)
+      : null;
+
+  // ===========================================================
   // 現在のアイテム
-  // ==============================
+  // ===========================================================
+
+  const itemsToPlace =
+    placementItems as ItemToPlace[];
 
   const totalItems =
     itemsToPlace.length;
 
   const currentItem =
     itemsToPlace[
-      currentIndex
+      placementCurrentIndex
     ];
 
-  // ==============================
+  // ===========================================================
   // エリア選択
-  // ==============================
+  // ===========================================================
 
-  const handleSelectArea = (
+  const handleSelectArea = async (
     areaId: string
   ) => {
-    // ------------------------------
-    // 生徒は操作しない
-    // ------------------------------
+    // ---------------------------------------------------------
+    // 生徒は操作できない
+    // ---------------------------------------------------------
 
     if (!isTeacher) {
       return;
     }
 
+    // ---------------------------------------------------------
+    // 同じエリアを押したら解除
+    // ---------------------------------------------------------
+
     const nextSelectedAreaId =
-      selectedAreaId === areaId
+      placementSelectedAreaId ===
+      areaId
         ? null
         : areaId;
 
-    setSelectedAreaId(
+    // ---------------------------------------------------------
+    // SyncContainer側で
+    // state更新 + Broadcast
+    // ---------------------------------------------------------
+
+    await selectPlacementArea(
       nextSelectedAreaId
-    );
-
-    // ------------------------------
-    // 全員に選択状態を同期
-    // ------------------------------
-
-    broadcastEvent(
-      'PLACEMENT_SELECT',
-      {
-        currentIndex,
-        selectedAreaId:
-          nextSelectedAreaId,
-      }
     );
   };
 
-  // ==============================
+  // ===========================================================
   // OKボタン
-  // ==============================
+  // ===========================================================
 
   const handleConfirm =
     async () => {
+      // -------------------------------------------------------
+      // 基本チェック
+      // -------------------------------------------------------
+
       if (
         !isTeacher ||
-        !selectedAreaId ||
+        !placementSelectedAreaId ||
         !currentItem ||
         isSubmitting ||
         isSaving
@@ -616,30 +236,30 @@ export default function PlaceAnimalPage() {
         return;
       }
 
-      // ------------------------------
+      // -------------------------------------------------------
       // エリア取得
-      // ------------------------------
+      // -------------------------------------------------------
 
       const selectedArea =
         ZOO_AREAS.find(
           (area) =>
             area.id ===
-            selectedAreaId
+            placementSelectedAreaId
         );
 
       if (!selectedArea) {
         return;
       }
 
-      // ------------------------------
+      // -------------------------------------------------------
       // item_id取得
-      // ------------------------------
+      // -------------------------------------------------------
 
-      const p_item_id =
+      const itemId =
         currentItem.item_id ??
         currentItem.obtained_item_id;
 
-      if (!p_item_id) {
+      if (!itemId) {
         console.error(
           'item_idを取得できません:',
           currentItem
@@ -652,50 +272,44 @@ export default function PlaceAnimalPage() {
         return;
       }
 
-      // ------------------------------
-      // area_id
-      // ------------------------------
+      // -------------------------------------------------------
+      // class_id確認
+      // -------------------------------------------------------
 
-      const p_area_id =
-        selectedArea.numericId;
-
-      // ------------------------------
-      // class_id取得
-      // ------------------------------
-      //
-      // 重要：
-      // currentItem.class_idは使用しない。
-      //
-      // 配置先のclass_idは、
-      // 現在ログインしているユーザーの
-      // class_idを使用する。
-      // ------------------------------
-
-      const resolvedId =
-        resolvedClassId();
-
-      if (!resolvedId) {
+      if (
+        !resolvedClassId ||
+        Number.isNaN(
+          resolvedClassId
+        )
+      ) {
         console.error(
           'class_idを取得できません'
         );
 
         alert(
-          'class_idを取得できません。もう一度ログインしてください。'
+          'class_idを取得できません。'
         );
 
         return;
       }
 
-      const p_class_id =
-        resolvedId;
+      // -------------------------------------------------------
+      // 保存ログ
+      // -------------------------------------------------------
 
       console.log(
         '配置保存パラメータ:',
         {
-          item_id: p_item_id,
-          area_id: p_area_id,
-          class_id: p_class_id,
+          item_id: itemId,
+          area_id:
+            selectedArea.numericId,
+          class_id:
+            resolvedClassId,
           currentItem,
+          currentIndex:
+            placementCurrentIndex,
+          selectedAreaId:
+            placementSelectedAreaId,
         }
       );
 
@@ -704,18 +318,17 @@ export default function PlaceAnimalPage() {
       );
 
       try {
-        // ==============================
+        // =====================================================
         // DB保存
-        // ==============================
+        // =====================================================
 
         const data =
           await savePlacement({
-            itemId:
-              p_item_id,
+            itemId,
             areaId:
-              p_area_id,
+              selectedArea.numericId,
             classId:
-              p_class_id,
+              resolvedClassId,
           });
 
         if (!data) {
@@ -735,62 +348,35 @@ export default function PlaceAnimalPage() {
           data
         );
 
-        // ==============================
-        // 次のアイテムがある
-        // ==============================
+        // =====================================================
+        // 次のアイテムがある場合
+        // =====================================================
 
         if (
-          currentIndex + 1 <
+          placementCurrentIndex + 1 <
           totalItems
         ) {
           const nextIndex =
-            currentIndex + 1;
+            placementCurrentIndex +
+            1;
 
-          setCurrentIndex(
+          // ---------------------------------------------------
+          // SyncContainerで
+          // 自分のstate更新 + 全員へBroadcast
+          // ---------------------------------------------------
+
+          await nextPlacement(
             nextIndex
-          );
-
-          setSelectedAreaId(
-            null
-          );
-
-          // ------------------------------
-          // 全員を次の動物へ
-          // ------------------------------
-
-          await broadcastEvent(
-            'PLACEMENT_NEXT',
-            {
-              currentIndex:
-                nextIndex,
-            }
           );
 
           return;
         }
 
-        // ==============================
-        // 全アイテム配置完了
-        // ==============================
+        // =====================================================
+        // 全配置完了
+        // =====================================================
 
-        sessionStorage.removeItem(
-          GACHA_RESULT_ITEMS_KEY
-        );
-
-        await broadcastEvent(
-          'PLACEMENT_COMPLETE',
-          {
-            completed: true,
-          }
-        );
-
-        // ------------------------------
-        // 自分自身もhomeへ
-        // ------------------------------
-
-        router.push(
-          '/home'
-        );
+        await completePlacement();
       } catch (error) {
         console.error(
           '通信エラー:',
@@ -807,34 +393,72 @@ export default function PlaceAnimalPage() {
       }
     };
 
-  // ==============================
-  // アイテムがまだない場合
-  // ==============================
+  // ===========================================================
+  // ガチャ結果取得中
+  // ===========================================================
 
-  if (!currentItem) {
+  if (
+    isSyncLoading ||
+    !channelReady
+  ) {
     return (
       <div className="place-container">
         <p>
-          配置するアイテムを読み込んでいます...
+          配置画面を準備しています...
         </p>
       </div>
     );
   }
 
-  // ==============================
+  // ===========================================================
+  // 生徒側：ガチャ結果待ち
+  // ===========================================================
+
+  if (
+    !isTeacher &&
+    placementItems.length === 0
+  ) {
+    return (
+      <div className="place-container">
+        <p>
+          先生から配置する動物を取得しています...
+        </p>
+      </div>
+    );
+  }
+
+  // ===========================================================
+  // アイテムが存在しない
+  // ===========================================================
+
+  if (!currentItem) {
+    return (
+      <div className="place-container">
+        <p>
+          配置するアイテムがありません。
+        </p>
+      </div>
+    );
+  }
+
+  // ===========================================================
   // Render
-  // ==============================
+  // ===========================================================
 
   return (
     <div className="place-container">
 
-      {/* タイトル */}
+      {/* =====================================================
+          タイトル
+      ===================================================== */}
 
       <h1 className="place-title-plain">
         どこにこのアイテムを置くかみんなで決めよう！
       </h1>
 
-      {/* アイテム画像 */}
+      {/* =====================================================
+          アイテム画像
+      ===================================================== */}
 
       <div className="place-item-section">
         <img
@@ -847,18 +471,21 @@ export default function PlaceAnimalPage() {
         />
 
         <span className="place-item-fraction">
-          {currentIndex + 1} /{' '}
+          {placementCurrentIndex + 1}
+          {' / '}
           {totalItems}
         </span>
       </div>
 
-      {/* エリア */}
+      {/* =====================================================
+          エリア
+      ===================================================== */}
 
       <div className="place-areas-row">
         {ZOO_AREAS.map(
           (area) => {
             const isSelected =
-              selectedAreaId ===
+              placementSelectedAreaId ===
               area.id;
 
             return (
@@ -898,7 +525,9 @@ export default function PlaceAnimalPage() {
         )}
       </div>
 
-      {/* OKボタン */}
+      {/* =====================================================
+          OKボタン
+      ===================================================== */}
 
       <div className="place-footer-center">
         {isTeacher ? (
@@ -907,7 +536,7 @@ export default function PlaceAnimalPage() {
               handleConfirm
             }
             disabled={
-              !selectedAreaId ||
+              !placementSelectedAreaId ||
               isSubmitting ||
               isSaving
             }
@@ -926,3 +555,4 @@ export default function PlaceAnimalPage() {
     </div>
   );
 }
+
