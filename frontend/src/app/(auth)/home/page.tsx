@@ -35,7 +35,6 @@ export default function ZooHomePage() {
   // メーター情報取得ロジック
   const fetchMeter = useCallback(async (cId: number) => {
     try {
-      await updateSessionPhase('HOME');
       const { data, error } = await supabase.rpc('get_meter', {
         p_class_id: cId,
       });

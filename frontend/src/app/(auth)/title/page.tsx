@@ -37,7 +37,7 @@ export default function TitleDetailPage() {
     try {
       const { data, error: rpcError } = await supabase.rpc('get_title', {
         p_class_id: cId,
-        p_user_number: uId, // RPCの定義に合わせて userId (または userNumber) を渡す
+        p_user_id: uId, // RPCの定義に合わせて userId (または userNumber) を渡す
       });
 
       if (rpcError || !data || data.length === 0) {
