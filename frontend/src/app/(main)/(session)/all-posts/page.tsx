@@ -23,8 +23,7 @@ export default function AnswersListPage() {
   const router = useRouter();
 
   // SyncContainer のインターフェースに合わせて正確に分割代入
-  const { isTeacher, classId, isLoading: isSyncLoading, updateSessionPhase
-   } = useSync();
+  const { isTeacher, classId, isLoading: isSyncLoading, updateSessionPhase } = useSync();
 
   const [selectedGenre, setSelectedGenre] = useState<string>('お題を読み込み中...');
   const [answers, setAnswers] = useState<AnswerItem[]>([]);
@@ -65,7 +64,6 @@ export default function AnswersListPage() {
         return;
       }
 
-      // SupabaseのJOIN結果（配列またはオブジェクト）のパース処理
       const fetchedTopic = Array.isArray(sessionData.topics)
         ? sessionData.topics[0]
         : sessionData.topics;
@@ -114,12 +112,9 @@ export default function AnswersListPage() {
   const POSTS_PER_ROW = 3;
   const totalRows = Math.ceil(answers.length / POSTS_PER_ROW);
 
- 
   const handleGoToGacha = async () => {
-    // ★ 3. phase を 'ANSWERING' に更新
-      await updateSessionPhase('GACHA');
+    await updateSessionPhase('GACHA');
   };
-  
 
   // 全体ローディングフラグ
   const pageLoading = isSyncLoading || loading;
@@ -145,7 +140,20 @@ export default function AnswersListPage() {
           <div style={{ textAlign: 'center', color: '#ffffff', fontSize: '24px', marginTop: '100px' }}>
             まだ公開されている投稿がありません。
           </div>
+        ) : answers.length <= 3 ? (
+          /* ★ 1〜3件の場合: ダミー卵なしで中央寄せ配置 */
+          <div className="answers-flex-center">
+            {answers.map((answer) => (
+              <div key={answer.post_id} className="egg-card-wrapper">
+                <img src={EGG_IMAGE_PATH} alt="背景卵" className="egg-bg-image" />
+                <div className="egg-content-overlay">
+                  <p className="egg-answer-text">{answer.post_content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
+          /* ★ 4件以上の場合: 1段目右端ダミー＆2段目左端ダミーを含む千鳥（ハニカム）配置 */
           <div className="answers-egg-grid">
             {Array.from({ length: totalRows }).map((_, rowIndex) => {
               const isOffsetRow = rowIndex % 2 === 1;
@@ -160,12 +168,14 @@ export default function AnswersListPage() {
                   key={`row-${rowIndex}`}
                   className={`egg-row ${isOffsetRow ? 'offset-row' : ''}`}
                 >
+                  {/* 2段目以降の奇数行（1, 3...）: 左端にダミー卵 */}
                   {isOffsetRow && (
                     <div className="egg-card-wrapper dummy-half-egg">
                       <img src={EGG_IMAGE_PATH} alt="背景卵" className="egg-bg-image" />
                     </div>
                   )}
 
+                  {/* 回答データ */}
                   {rowAnswers.map((answer) => (
                     <div key={answer.post_id} className="egg-card-wrapper">
                       <img src={EGG_IMAGE_PATH} alt="背景卵" className="egg-bg-image" />
@@ -175,6 +185,7 @@ export default function AnswersListPage() {
                     </div>
                   ))}
 
+                  {/* 1段目などの偶数行（0, 2...）: 右端にダミー卵 */}
                   {!isOffsetRow && (
                     <div className="egg-card-wrapper dummy-half-egg">
                       <img src={EGG_IMAGE_PATH} alt="背景卵" className="egg-bg-image" />

@@ -1,8 +1,9 @@
-/* 画面全体レイアウト */
+/* 画面全体レイアウト (デフォルト維持) */
 .title-detail-container {
   position: relative;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   padding: 80px;
   box-sizing: border-box;
   background-color: #FFEE00;
@@ -96,6 +97,7 @@
 .title-footer {
   margin-bottom: 32px;
   text-align: center;
+  width: 100%;
 }
 
 .title-description {
@@ -103,10 +105,10 @@
   font-size: 35px;
   font-weight: bold;
   margin: 0;
-  white-space: nowrap; /* 1行で表示 */
+  white-space: nowrap; /* デフォルトでは1行 */
 }
 
-/* 画面のど真ん中に配置するためのラッパー */
+/* ローディング・エラー表示 */
 .title-empty-wrapper {
   flex: 1;
   display: flex;
@@ -115,12 +117,127 @@
   padding: 20px;
 }
 
-/* テキストのスタイリング */
-.title-error-message {
+.title-error-message,
+.loading-text {
   color: #666;
   font-size: 50px;
   font-weight: bold;
   text-align: center;
   word-break: break-all;
   margin: 0;
+}
+
+
+/* --------------------------------------------------
+ * 画面の高さが低くなったとき（高さ 750px 以下：ノートPC・タブレット横向き）
+ * -------------------------------------------------- */
+@media (max-height: 750px) {
+  .title-detail-container {
+    padding: 20px 40px;
+  }
+
+  .title-header {
+    margin-top: 10px;
+  }
+
+  .title-sub {
+    font-size: 24px;
+    margin-bottom: 4px;
+  }
+
+  .title-main {
+    font-size: 36px;
+  }
+
+  .title-image-container {
+    max-width: 200px;
+    max-height: 200px;
+    margin: 8px 0;
+  }
+
+  .title-footer {
+    margin-bottom: 12px;
+  }
+
+  .title-description {
+    font-size: 24px;
+  }
+
+  .title-error-message,
+  .loading-text {
+    font-size: 32px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面の高さがかなり低くなったとき（高さ 500px 以下：スマホ横持ちなど）
+ * -------------------------------------------------- */
+@media (max-height: 500px) {
+  .title-detail-container {
+    padding: 12px 24px;
+  }
+
+  .title-back-button {
+    top: 12px;
+    left: 12px;
+  }
+
+  .back-arrow,
+  .back-text {
+    font-size: 18px;
+  }
+
+  .title-header {
+    margin-top: 0;
+  }
+
+  .title-sub {
+    font-size: 16px;
+  }
+
+  .title-main {
+    font-size: 24px;
+  }
+
+  .title-image-container {
+    max-width: 120px;
+    max-height: 120px;
+    margin: 4px 0;
+  }
+
+  .title-footer {
+    margin-bottom: 4px;
+  }
+
+  .title-description {
+    font-size: 16px;
+  }
+}
+
+/* --------------------------------------------------
+ * 画面幅が狭い場合（幅 600px 以下：スマホ縦持ち）
+ * -------------------------------------------------- */
+@media (max-width: 600px) {
+  .title-detail-container {
+    padding: 60px 20px 30px 20px;
+  }
+
+  .title-sub {
+    font-size: 22px;
+  }
+
+  .title-main {
+    font-size: 32px;
+  }
+
+  .title-image-container {
+    max-width: 220px;
+    max-height: 220px;
+  }
+
+  .title-description {
+    font-size: 20px;
+    white-space: normal; /* 幅が狭い端末では折り返して見切れを防止 */
+    word-break: break-word;
+  }
 }

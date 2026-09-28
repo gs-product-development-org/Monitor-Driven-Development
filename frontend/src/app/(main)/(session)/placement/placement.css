@@ -2,25 +2,27 @@
 .place-container {
   position: relative;
   width: 100vw;
-  height: 100vh;
-  padding: 32px 24px;
+  min-height: 100vh;
+  padding: clamp(12px, 2vh, 32px) clamp(12px, 2vw, 24px);
   box-sizing: border-box;
   background-color: #FF648D;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   user-select: none;
 }
 
 /* 1. 画面一番上: 枠なしの黒文字タイトル */
 .place-title-plain {
-  font-size: 45px;
+  font-size: clamp(20px, 3.2vw, 45px);
   font-weight: 800;
   color: #000000;
   margin: 0;
   text-align: center;
+  line-height: 1.2;
 }
 
 /* 2. アイテム画像 ＋ 分数表示（枠なし・小さめ） */
@@ -28,19 +30,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-top: -10px;
+  gap: 4px;
+  margin-top: 0;
 }
 
 .place-item-mini-img {
-  width: 160px;
-  height: 160px;
+  width: clamp(90px, 15vh, 160px);
+  height: clamp(90px, 15vh, 160px);
   object-fit: contain;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
 }
 
 .place-item-fraction {
-  font-size: 25px;
+  font-size: clamp(16px, 2vw, 25px);
   font-weight: bold;
   color: #000000;
 }
@@ -51,7 +53,8 @@
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  gap: 20px;
+  flex-wrap: wrap; /* 画面が狭いときに自動折り返し */
+  gap: clamp(10px, 1.5vw, 20px);
   width: 100%;
   max-width: 1350px;
   margin: 10px 0;
@@ -62,13 +65,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex: 0 1 auto;
 }
 
 /* 正方形の黒縁マス目 */
 .square-area-box {
-  width: 250px;
-  height: 250px;
+  width: clamp(100px, 15vw, 250px);
+  height: clamp(100px, 15vw, 250px);
+  max-height: 25vh; /* 縦幅が狭い端末での高さオーバーフロー対策 */
   aspect-ratio: 1 / 1;
   background-color: #ffffff;
   border: 4px solid #000000; /* 太めの黒枠 */
@@ -83,7 +88,7 @@
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.square-area-box:hover {
+.square-area-box:hover:not(.readonly) {
   transform: translateY(-4px);
 }
 
@@ -91,7 +96,7 @@
 .square-area-box.selected {
   border: 6px solid #22c55e; /* 鮮やかな緑枠 */
   box-shadow: 0 0 0 3px #000000, 0 8px 20px rgba(34, 197, 94, 0.5); /* 黒縁＋緑のシャドウ */
-  transform: scale(1.08);
+  transform: scale(1.05);
   background-color: #f0fdf4;
 }
 
@@ -102,9 +107,9 @@
   border-radius: 7px;
 }
 
-/* ★ 各エリア下の名前（黒文字） */
+/* 各エリア下の名前（黒文字） */
 .square-area-label {
-  font-size: 28px;
+  font-size: clamp(16px, 2vw, 28px);
   font-weight: 800;
   color: #000000;
   text-align: center;
@@ -116,30 +121,37 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.place-footer-center p {
+  font-size: clamp(18px, 2.5vw, 32px);
+  font-weight: bold;
+  color: #000000;
+  margin: 0;
+  text-align: center;
 }
 
 .place-ok-button-large {
-  height: 120px;
-  width: 380px;
-  font-size: 60px;
+  height: clamp(60px, 10vh, 120px);
+  width: clamp(200px, 30vw, 380px);
+  font-size: clamp(28px, 4vw, 60px);
   font-weight: bold;
   background-color: #FF3333;
   color: #ffffff;
-  border: 9px solid #000000;
+  border: clamp(4px, 0.8vw, 9px) solid #000000;
   border-radius: 1.0rem;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding-top: 10px;
-  padding-bottom: 20px;
+  padding: 0 16px;
 }
 
 .place-ok-button-large:hover:not(:disabled) {
   background-color: #ff7171;
-  border: 9px solid #525252;
+  border-color: #525252;
   transform: translateY(-2px) scale(1.02);
 }
 
@@ -149,4 +161,31 @@
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
+}
+
+/* ==========================================
+   レスポンシブ個別調整 (タブレット・スマホ)
+   ========================================== */
+
+/* タブレット・スマートフォン（幅768px以下） */
+@media (max-width: 768px) {
+  .place-areas-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    justify-items: center;
+    gap: 12px;
+  }
+
+  .square-area-box {
+    width: 100%;
+    height: auto;
+    max-width: 140px;
+  }
+}
+
+/* スマホ小型端末（幅480px以下） */
+@media (max-width: 480px) {
+  .place-areas-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
