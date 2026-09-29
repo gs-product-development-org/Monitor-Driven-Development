@@ -39,37 +39,14 @@ interface SyncContextType {
   // -------------------------------------------------------
   // ユーザー情報
   // -------------------------------------------------------
-
   isTeacher: boolean;
   classId: number | null;
   userId: number | null;
-
-  // -------------------------------------------------------
-  // class_session
-  // -------------------------------------------------------
-
   sessionId: number | null;
-
-  // -------------------------------------------------------
-  // Loading
-  // -------------------------------------------------------
-
   isLoading: boolean;
-
-  // -------------------------------------------------------
-  // Realtime
-  // -------------------------------------------------------
-
   channelReady: boolean;
-
-  // -------------------------------------------------------
-  // 配置
-  // -------------------------------------------------------
-
   placementItems: PlacementItem[];
-
   placementCurrentIndex: number;
-
   placementSelectedAreaId: string | null;
 
   // -------------------------------------------------------
@@ -138,33 +115,19 @@ const SyncContext =
     isTeacher: false,
     classId: null,
     userId: null,
-
     sessionId: null,
-
     isLoading: true,
-
     channelReady: false,
-
     placementItems: [],
-
     placementCurrentIndex: 0,
-
     placementSelectedAreaId: null,
-
     updateSessionPhase: async () => {},
-
     requestPlacementItems: async () => {},
-
     selectPlacementArea: async () => {},
-
     nextPlacement: async () => {},
-
     completePlacement: async () => {},
-
     navigateAll: async () => {},
-
     broadcastEvent: async () => {},
-
     channel: null,
   });
 
@@ -469,22 +432,22 @@ export default function SyncContainer({
 
     // =======================================================
     // class_sessions UPDATE
+    // class_sessionsのphase変更を検知してイベントを起こす
     // =======================================================
 
     channel.on(
-      'postgres_changes',
+      'postgres_changes',  //postgres_changesという名前のイベント受信したら以降の関数実施
       {
         event: 'UPDATE',
         schema: 'public',
         table: 'class_sessions',
-        filter: `class_id=eq.${classId}`,
+        filter: `class_id=eq.${classId}`,  
       },
       (payload) => {
         console.log(
           'class_sessions UPDATE:',
           payload
         );
-
         const newSession =
           payload.new as {
             session_id: number;
@@ -493,15 +456,12 @@ export default function SyncContainer({
             phase: string;
             updated_at: string;
           };
-
         // ---------------------------------------------------
         // session_id更新
         // ---------------------------------------------------
-
         setSessionId(
           newSession.session_id
         );
-
         console.log(
           '新しいphase:',
           newSession.phase
@@ -510,7 +470,6 @@ export default function SyncContainer({
         // ---------------------------------------------------
         // GACHA開始時
         // ---------------------------------------------------
-
         if (
           newSession.phase ===
           'GACHA'
@@ -518,11 +477,9 @@ export default function SyncContainer({
           setPlacementItems(
             []
           );
-
           setPlacementCurrentIndex(
             0
           );
-
           setPlacementSelectedAreaId(
             null
           );
@@ -541,18 +498,15 @@ export default function SyncContainer({
         ) {
           const items =
             loadTeacherGachaResult();
-
           if (
             items.length > 0
           ) {
             setPlacementItems(
               items
             );
-
             setPlacementCurrentIndex(
               0
             );
-
             setPlacementSelectedAreaId(
               null
             );
@@ -561,6 +515,7 @@ export default function SyncContainer({
 
         // ---------------------------------------------------
         // phaseによる画面遷移
+        // 先生の操作によりphaseが変更されると、それを生徒側の端末で検知して画面遷移する
         // ---------------------------------------------------
 
         if (
@@ -626,13 +581,14 @@ export default function SyncContainer({
 
     // =======================================================
     // PAGE_TRANSITION
+    // 上のpage_transitionを受信する側のロジック
     // =======================================================
 
     channel.on(
       'broadcast',
       {
         event:
-          'PAGE_TRANSITION',
+          'PAGE_TRANSITION',  //page_transitionという名前でイベント受信したら行うこと
       },
       (
         payload: {
@@ -679,44 +635,35 @@ export default function SyncContainer({
           'PLACEMENT_REQUEST受信:',
           payload
         );
-
         // ---------------------------------------------------
         // 先生だけが応答
         // ---------------------------------------------------
-
         if (!isTeacher) {
           return;
         }
-
         // ---------------------------------------------------
         // 先生のsessionStorageからガチャ結果取得
         // ---------------------------------------------------
 
         const items =
           loadTeacherGachaResult();
-
         if (
           items.length === 0
         ) {
           console.warn(
             '先生側にガチャ結果がありません'
           );
-
           return;
         }
-
         // ---------------------------------------------------
         // 先生自身のstateにも保存
         // ---------------------------------------------------
-
         setPlacementItems(
           items
         );
-
         setPlacementCurrentIndex(
           0
         );
-
         setPlacementSelectedAreaId(
           null
         );
@@ -728,9 +675,9 @@ export default function SyncContainer({
         await channel.send({
           type: 'broadcast',
           event:
-            'PLACEMENT_INIT',
+            'PLACEMENT_INIT',  //イベント名place_initで情報送る
           payload: {
-            items,
+            items,  //ガチャアイテムを送る
           },
         });
 
@@ -751,12 +698,12 @@ export default function SyncContainer({
       'broadcast',
       {
         event:
-          'PLACEMENT_INIT',
+          'PLACEMENT_INIT',  // placement_initがきたら
       },
       (
         payload: {
           payload?: {
-            items?: PlacementItem[];
+            items?: PlacementItem[];  // 先生から送られたアイテムを受け取る
           };
         }
       ) => {
@@ -775,7 +722,6 @@ export default function SyncContainer({
           console.warn(
             'PLACEMENT_INITに有効なitemsがありません'
           );
-
           return;
         }
 
@@ -784,17 +730,14 @@ export default function SyncContainer({
         // ---------------------------------------------------
 
         setPlacementItems(
-          items
+          items  // placementItemsが/placementで使えるようになる
         );
-
         setPlacementCurrentIndex(
           0
         );
-
         setPlacementSelectedAreaId(
           null
         );
-
         console.log(
           'placementItems更新:',
           items
@@ -878,7 +821,7 @@ export default function SyncContainer({
       'broadcast',
       {
         event:
-          'PLACEMENT_NEXT',
+          'PLACEMENT_NEXT',  // placement_nextというイベントを受信したときに起きる
       },
       (
         payload: {
@@ -891,11 +834,9 @@ export default function SyncContainer({
           'PLACEMENT_NEXT受信:',
           payload
         );
-
         const currentIndex =
           payload.payload
             ?.currentIndex;
-
         if (
           typeof currentIndex ===
           'number'
@@ -925,7 +866,7 @@ export default function SyncContainer({
       'broadcast',
       {
         event:
-          'PLACEMENT_COMPLETE',
+          'PLACEMENT_COMPLETE',  // placement_completeという名前でイベント起きる
       },
       (
         payload: {
@@ -981,15 +922,12 @@ export default function SyncContainer({
       console.log(
         `Realtime切断: classroom_${classId}`
       );
-
       setChannelReady(
         false
       );
-
       supabase.removeChannel(
         channel
       );
-
       channelRef.current =
         null;
     };
@@ -1013,35 +951,28 @@ export default function SyncContainer({
           console.warn(
             'Realtime channelが存在しません'
           );
-
           return;
         }
-
         if (!channelReady) {
           console.warn(
             'Realtime channelがまだ接続されていません'
           );
-
           return;
         }
-
         if (!classId) {
           console.warn(
             'classIdがありません'
           );
-
           return;
         }
-
         console.log(
           'PLACEMENT_REQUEST送信'
         );
-
         await channelRef.current.send(
           {
             type: 'broadcast',
             event:
-              'PLACEMENT_REQUEST',
+              'PLACEMENT_REQUEST',  // placement_requestというイベント名で情報を送る
             payload: {
               class_id:
                 classId,
@@ -1073,7 +1004,6 @@ export default function SyncContainer({
         // Broadcastは送信者自身に返ってこない場合があるため、
         // 先にstateを更新しておく
         // ---------------------------------------------------
-
         setPlacementSelectedAreaId(
           areaId
         );
@@ -1088,7 +1018,6 @@ export default function SyncContainer({
           console.warn(
             'Realtime channelが存在しません'
           );
-
           return;
         }
 
@@ -1096,7 +1025,7 @@ export default function SyncContainer({
           {
             type: 'broadcast',
             event:
-              'PLACEMENT_SELECT',
+              'PLACEMENT_SELECT',  //placement_selectという名前で情報を送る
             payload: {
               currentIndex:
                 placementCurrentIndex,
@@ -1133,11 +1062,9 @@ export default function SyncContainer({
         // ---------------------------------------------------
         // 自分の画面を先に更新
         // ---------------------------------------------------
-
         setPlacementCurrentIndex(
           nextIndex
         );
-
         setPlacementSelectedAreaId(
           null
         );
@@ -1145,14 +1072,12 @@ export default function SyncContainer({
         // ---------------------------------------------------
         // Realtime送信
         // ---------------------------------------------------
-
         if (
           !channelRef.current
         ) {
           console.warn(
             'Realtime channelが存在しません'
           );
-
           return;
         }
 
@@ -1160,7 +1085,7 @@ export default function SyncContainer({
           {
             type: 'broadcast',
             event:
-              'PLACEMENT_NEXT',
+              'PLACEMENT_NEXT',  //placement_nextという名前で情報送る
             payload: {
               currentIndex:
                 nextIndex,
@@ -1189,20 +1114,16 @@ export default function SyncContainer({
         // ---------------------------------------------------
         // 自分自身はHOMEへ
         // ---------------------------------------------------
-
         router.push('/home');
-
         // ---------------------------------------------------
         // 他端末へ通知
         // ---------------------------------------------------
-
         if (
           !channelRef.current
         ) {
           console.warn(
             'Realtime channelが存在しません'
           );
-
           return;
         }
 
@@ -1216,7 +1137,6 @@ export default function SyncContainer({
             },
           }
         );
-
         console.log(
           'PLACEMENT_COMPLETE送信'
         );
@@ -1227,7 +1147,6 @@ export default function SyncContainer({
   // =========================================================
   // 8. class_sessions.phaseを変更
   // =========================================================
-
   const updateSessionPhase =
     async (
       phase: string
@@ -1262,10 +1181,8 @@ export default function SyncContainer({
           'session phase更新エラー:',
           error
         );
-
         throw error;
       }
-
       console.log(
         'session phase更新成功:',
         data
@@ -1275,7 +1192,6 @@ export default function SyncContainer({
   // =========================================================
   // 9. 既存Broadcastによる一斉遷移
   // =========================================================
-
   const navigateAll =
     async (
       destination: string
@@ -1287,14 +1203,13 @@ export default function SyncContainer({
           {
             type: 'broadcast',
             event:
-              'PAGE_TRANSITION',
+              'PAGE_TRANSITION',  //page_transitionという名前にイベント名で情報を送る
             payload: {
               destination,
             },
           }
         );
       }
-
       router.push(
         destination
       );
